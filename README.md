@@ -4,12 +4,27 @@
 
 ## 🌐 线上地址
 
-| 托管 | 地址 |
-|---|---|
-| **GitHub Pages** | https://insseek.github.io/gov-capacity-report-site/ |
-| **Netlify** | https://gov-capacity-report.netlify.app/ |
+| 托管 | 地址 | 说明 |
+|---|---|---|
+| **GitHub Pages** | https://insseek.github.io/gov-capacity-report-site/ | **逐字节等于本仓库的文件**，适合核对 |
+| **Netlify** | https://gov-capacity-report.netlify.app/ | 访问更快，但服务端会注入内容（见下） |
 
 两个地址指向**同一份文件**，互为备份。推送到 `main` 后两边都会自动重新部署。
+
+### 为什么两个地址不完全一样
+
+Netlify 在**服务端**对每个响应做两处注入（不修改仓库里的文件）：
+
+1. 顶部一段介绍 Netlify 的 HTML 注释（约 324 字节）
+2. 末尾 `<script async src="/.netlify/scripts/hud?...">`（约 186 字节）
+
+**页面内容本身逐行相同**，差异只有这两处。因此：
+
+- 要验证「发布的就是构建产物」→ 用 **GitHub Pages**
+- 只想让读者打开 → 两个都行，Netlify 通常更快
+
+`index.html` 的「离线可用」说的是**文件本身**：它内联了 ECharts 与全部数据，
+**不含任何外部资源引用、不含带 `src` 的 script**。下载下来断网也能打开。
 
 ## 这是什么
 
