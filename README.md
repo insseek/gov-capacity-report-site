@@ -2,14 +2,26 @@
 
 《治理能力国际对比报告》的**发布仓库**。
 
+## 🌐 线上地址
+
+| 托管 | 地址 |
+|---|---|
+| **GitHub Pages** | https://insseek.github.io/gov-capacity-report-site/ |
+| **Netlify** | https://gov-capacity-report.netlify.app/ |
+
+两个地址指向**同一份文件**，互为备份。推送到 `main` 后两边都会自动重新部署。
+
 ## 这是什么
 
 本仓库只存放**已生成**的报告文件，由
 [gov-capacity-report](https://github.com/insseek/gov-capacity-report) 的流水线产出后复制至此。
 **请勿直接修改本仓库的文件**——下次同步会覆盖。
 
-- `index.html` —— 报告全文（单文件、离线可用，`<title>` 与页内声明均为报告内容）
-- `netlify.toml` —— 托管配置（无构建步骤，根目录即发布目录）
+| 文件 | 说明 |
+|---|---|
+| `index.html` | 报告全文（单文件、离线可用；`<title>` 与页内声明均为报告内容） |
+| `netlify.toml` | Netlify 托管配置（无构建步骤，根目录即发布目录） |
+| `LICENSE` | 内容许可说明（CC BY-NC-SA 4.0） |
 
 ## 如何更新
 
@@ -30,7 +42,7 @@
    git push
    ```
 
-Netlify 检测到推送后会自动重新部署。
+推送后 Netlify 与 GitHub Pages 都会自动重新部署。
 
 发布前建议核对两件事：
 
@@ -40,7 +52,7 @@ Netlify 检测到推送后会自动重新部署。
 ## 许可
 
 **内容采用 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh)**
-（署名—非商业性使用—相同方式共享）。
+（署名—非商业性使用—相同方式共享），详见 [LICENSE](LICENSE)。
 
 - **署名**：保留报告内的作者署名与来源清单
 - **非商业**：不得用于商业目的。**这不是取舍，而是上游数据的合规前提**——
