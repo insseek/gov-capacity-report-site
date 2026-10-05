@@ -1,0 +1,30 @@
+# 许可
+
+本仓库只存放一份文件 `index.html`——由
+[gov-capacity-report](https://github.com/insseek/gov-capacity-report) 生成的报告。
+
+## 报告内容：CC BY-NC-SA 4.0
+
+[CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh)
+（署名—非商业性使用—相同方式共享）。
+
+- **署名** —— 保留报告内的作者署名与来源清单
+- **非商业** —— 不得用于商业目的
+- **相同方式共享** —— 改编作品须以相同许可发布
+
+**「非商业」是上游数据的合规前提，不是可选项。** 报告使用 WHO GHO、
+Yale EPI、QoG、SIPRI、Freedom House、Polity5 等来源的数据，
+其条款明确禁止商业使用。一旦出现商业变现，这些数据的使用即构成违约。
+
+完整说明见主仓库的
+[LICENSE-CONTENT.md](https://github.com/insseek/gov-capacity-report/blob/main/LICENSE-CONTENT.md)。
+
+## 本仓库的配置与说明文字
+
+`netlify.toml`、`README.md`、本文件、`.gitignore` 为部署配置与说明，
+同样按 CC BY-NC-SA 4.0 发布。
+
+## 源代码
+
+生成报告的源代码以 MIT 许可发布，见
+[gov-capacity-report](https://github.com/insseek/gov-capacity-report)。
