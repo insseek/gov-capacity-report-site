@@ -1,0 +1,31 @@
+# Netlify 配置
+#
+# 本仓库只存放**已生成**的报告，不需要构建：
+#   - 构建命令留空
+#   - 发布目录为仓库根目录
+# 更新方式：在 gov-capacity-report 里跑 `make report`，
+# 再把 output/治理能力对比报告.html 复制为这里的 index.html 后 push。
+
+[build]
+  command = ""
+  publish = "."
+
+# 单页站点，未命中的路径回落到首页，避免 404
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # 报告内嵌 ECharts，需要内联脚本；其余保持默认限制
+    X-Frame-Options = "SAMEORIGIN"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    # 报告会随流水线更新，但文件名不变，用短缓存 + 校验
+    Cache-Control = "public, max-age=600, must-revalidate"
