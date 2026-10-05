@@ -13,21 +13,28 @@
 
 ## 如何更新
 
-在 [gov-capacity-report](https://github.com/insseek/gov-capacity-report) 的本地副本中：
+1. 在 [gov-capacity-report](https://github.com/insseek/gov-capacity-report) 的本地副本中构建：
 
-```bash
-make report                                  # 重新生成交付物
-cp output/治理能力对比报告.html \
-   ../gov-capacity-report-site/index.html    # 同步到本仓库
-cd ../gov-capacity-report-site
-git commit -am "同步 vX.Y.Z" && git push
-```
+   ```bash
+   make report
+   ```
+
+2. 把生成物 `output/治理能力对比报告.html` 复制到本仓库根目录，
+   **改名为 `index.html`**（覆盖旧文件）
+
+3. 提交并推送：
+
+   ```bash
+   git add index.html
+   git commit -m "同步 vX.Y.Z"
+   git push
+   ```
 
 Netlify 检测到推送后会自动重新部署。
 
 发布前建议核对两件事：
 
-1. **版本号**是否与主仓库一致（`catalog.py` 的 `VERSION`）
+1. **版本号**是否与主仓库一致（`gov-capacity-report/src/catalog.py` 的 `VERSION`）
 2. 报告**体积**是否仍在 1.4 MB 左右——若明显变大，可能是数据或脚本被意外内联
 
 ## 许可
