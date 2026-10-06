@@ -4,7 +4,7 @@
 #   - 构建命令留空
 #   - 发布目录为仓库根目录
 # 更新方式：在 gov-capacity-report 里跑 `make report`，
-# 再把 output/治理能力对比报告.html 复制为这里的 index.html 后 push。
+# 再把 output/国家治理能力的国际比较.html 复制为这里的 index.html 后 push。
 
 [build]
   command = ""
