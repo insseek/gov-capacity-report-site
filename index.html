@@ -265,7 +265,7 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
 <header>
   <div class="wrap">
     <h1>国家治理能力的国际比较<br>——中国与美、日、德、法、英、俄、印、韩、新九国的比较研究 · 1949–2026</h1>
-    <div class="sub">v2.4.4　·　<a href="#composition" class="sublink">五大类 · 十二领域</a> · 116 项指标 · 统一年度底表 · 实测／估算／推断三级可信度标注</div>
+    <div class="sub">v2.4.5　·　<a href="#composition" class="sublink">五大类 · 十二领域</a> · 116 项指标 · 统一年度底表 · 实测／估算／推断三级可信度标注</div>
     <div class="tags">
       <span class="tag">数据截至 2026-10-06</span>
       <span class="tag">116 项指标</span>
@@ -767,17 +767,24 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
 <!-- ================= 8 数据溯源 ================= -->
 <section id="s8">
   <h2><span class="n">08</span>数据溯源</h2>
-  <p class="lead">下表列出全部 <span id="catN">—</span> 项指标：所属领域、原始来源、单位、方向、覆盖年份与可信度，
-  以及台湾地区是否有数据。可排序、可搜索。</p>
+  <p class="lead">本节两部分：上为<b>来源与许可</b>——<span id="catN">—</span> 项指标来自哪些来源、
+  各自许可如何；下为<b>全部指标清单</b>——每项指标的所属领域、来源、单位、方向、覆盖年份与可信度，
+  以及台湾地区是否有数据。清单可搜索、可按领域筛选。</p>
+
   <div class="card">
-    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+    <h3>来源与许可</h3><p class="chartNote">本报告 116 项指标来自 30 个来源。<b>报告内嵌了这些来源的数据，公开传播须逐源署名并遵守各自条款。</b>下表按「受限程度」排序——<b>非商业</b>与<b>同许可</b>两类来源禁止商业使用，因此本报告整体以 <b>CC BY-NC-SA 4.0</b> 发布。代码（生成本报告的流水线）另以 <b>MIT</b> 许可发布，与内容许可相互独立。「待确认」表示尚未向权利人逐条核实，详见仓库的 <a href="https://github.com/insseek/gov-capacity-report/blob/main/DATA_LICENSES.md" target="_blank" rel="noopener">DATA_LICENSES.md</a>；生成报告的源代码与完整方法记录见 <a href="https://github.com/insseek/gov-capacity-report" target="_blank" rel="noopener">GitHub 仓库</a>。</p><div class="tblwrap"><table><thead><tr><th>来源</th><th>许可</th><th>类型</th><th class="c">指标数</th></tr></thead><tbody><tr><td>EM-DAT/HDX</td><td>通常为非商业</td><td class="kind k-nc">非商业</td><td class="c">4</td></tr><tr><td>WVS/QoG</td><td>免费但需登记；经 QoG 转载</td><td class="kind k-nc">非商业</td><td class="c">4</td></tr><tr><td>Yale EPI</td><td>CC BY-NC-SA 4.0</td><td class="kind k-nc">非商业</td><td class="c">3</td></tr><tr><td>Freedom House/QoG</td><td>通常 CC BY-NC；经 QoG 镜像</td><td class="kind k-nc">非商业</td><td class="c">3</td></tr><tr><td>WHO GHO</td><td>CC BY-NC-SA 3.0 IGO</td><td class="kind k-nc">非商业</td><td class="c">2</td></tr><tr><td>OWID/EM-DAT</td><td>通常为非商业</td><td class="kind k-nc">非商业</td><td class="c">1</td></tr><tr><td>SIPRI</td><td>非商业且使用量 <10% 数据集</td><td class="kind k-nc">非商业</td><td class="c">1</td></tr><tr><td>Polity5/QoG</td><td>通常 CC BY-NC</td><td class="kind k-nc">非商业</td><td class="c">1</td></tr><tr><td>V-Dem/QoG</td><td>CC BY-SA；经 QoG 间接获取</td><td class="kind k-sa">同许可</td><td class="c">3</td></tr><tr><td>V-Dem/OWID</td><td>CC BY-SA</td><td class="kind k-sa">同许可</td><td class="c">2</td></tr><tr><td>OWID/V-Dem</td><td>CC BY-SA</td><td class="kind k-sa">同许可</td><td class="c">1</td></tr><tr><td>OWID/FAO</td><td>逐图不同（FAO 为 CC BY 4.0）</td><td class="kind k-unclear">待确认</td><td class="c">3</td></tr><tr><td>OWID/UNDP</td><td>逐图不同</td><td class="kind k-unclear">待确认</td><td class="c">2</td></tr><tr><td>UNGA Ideal Points</td><td>可能 CC0</td><td class="kind k-unclear">待确认</td><td class="c">2</td></tr><tr><td>OWID/EI</td><td>逐图不同</td><td class="kind k-unclear">待确认</td><td class="c">1</td></tr><tr><td>OWID/UN</td><td>逐图不同</td><td class="kind k-unclear">待确认</td><td class="c">1</td></tr><tr><td>OWID/IUCN</td><td>逐图不同</td><td class="kind k-unclear">待确认</td><td class="c">1</td></tr><tr><td>OWID/Maddison</td><td>逐图不同</td><td class="kind k-unclear">待确认</td><td class="c">1</td></tr><tr><td>COW NMC v7</td><td>需引用；商业受限</td><td class="kind k-unclear">待确认</td><td class="c">1</td></tr><tr><td>Gallup/OWID</td><td>逐图不同；Gallup 有版权限制</td><td class="kind k-unclear">待确认</td><td class="c">1</td></tr><tr><td>OWID/UNODC</td><td>逐图不同</td><td class="kind k-unclear">待确认</td><td class="c">1</td></tr><tr><td>OWID/WHO</td><td>逐图不同</td><td class="kind k-unclear">待确认</td><td class="c">1</td></tr><tr><td>透明国际</td><td>署名并限制商业使用</td><td class="kind k-unclear">待确认</td><td class="c">1</td></tr><tr><td>World Bank</td><td>CC BY 4.0</td><td class="kind k-permissive">可再分发</td><td class="c">63</td></tr><tr><td>UN WPP 2024</td><td>CC BY 3.0 IGO</td><td class="kind k-permissive">可再分发</td><td class="c">4</td></tr><tr><td>FAOSTAT</td><td>CC BY 4.0</td><td class="kind k-permissive">可再分发</td><td class="c">2</td></tr><tr><td>Global Carbon Budget 2025</td><td>CC BY 4.0</td><td class="kind k-permissive">可再分发</td><td class="c">2</td></tr><tr><td>OWID/GCB</td><td>CC BY 4.0</td><td class="kind k-permissive">可再分发</td><td class="c">2</td></tr><tr><td>OWID/Ember</td><td>CC BY 4.0</td><td class="kind k-permissive">可再分发</td><td class="c">1</td></tr><tr><td>UCDP/PRIO ACD v26.1</td><td>CC BY 4.0</td><td class="kind k-permissive">可再分发</td><td class="c">1</td></tr></tbody></table></div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">全部指标（<span id="catN2">—</span> 项）</h3>
+    <p class="chartNote">所属领域用简称，悬停可看全名；「说明」限两行显示，悬停可看全文。
+    点击表头可排序。</p>
+    <div style="display:flex;gap:10px;margin:12px 0;flex-wrap:wrap">
       <input id="catSearch" placeholder="搜索指标名 / 来源 / 代码…" style="flex:1;min-width:220px;
         padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:13px">
       <select id="catDomain" style="padding:8px 12px;border:1px solid var(--line);border-radius:8px;
         font-family:inherit;font-size:13px;background:#fff"></select>
     </div>
-    <h3>来源与许可</h3><p class="chartNote">本报告 116 项指标来自 30 个来源。<b>报告内嵌了这些来源的数据，公开传播须逐源署名并遵守各自条款。</b>下表按「受限程度」排序——<b>非商业</b>与<b>同许可</b>两类来源禁止商业使用，因此本报告整体以 <b>CC BY-NC-SA 4.0</b> 发布。代码（生成本报告的流水线）另以 <b>MIT</b> 许可发布，与内容许可相互独立。「待确认」表示尚未向权利人逐条核实，详见仓库的 <a href="https://github.com/insseek/gov-capacity-report/blob/main/DATA_LICENSES.md" target="_blank" rel="noopener">DATA_LICENSES.md</a>；生成报告的源代码与完整方法记录见 <a href="https://github.com/insseek/gov-capacity-report" target="_blank" rel="noopener">GitHub 仓库</a>。</p><div class="tblwrap"><table><thead><tr><th>来源</th><th>许可</th><th>类型</th><th class="c">指标数</th></tr></thead><tbody><tr><td>EM-DAT/HDX</td><td>通常为非商业</td><td class="kind k-nc">非商业</td><td class="c">4</td></tr><tr><td>WVS/QoG</td><td>免费但需登记；经 QoG 转载</td><td class="kind k-nc">非商业</td><td class="c">4</td></tr><tr><td>Yale EPI</td><td>CC BY-NC-SA 4.0</td><td class="kind k-nc">非商业</td><td class="c">3</td></tr><tr><td>Freedom House/QoG</td><td>通常 CC BY-NC；经 QoG 镜像</td><td class="kind k-nc">非商业</td><td class="c">3</td></tr><tr><td>WHO GHO</td><td>CC BY-NC-SA 3.0 IGO</td><td class="kind k-nc">非商业</td><td class="c">2</td></tr><tr><td>OWID/EM-DAT</td><td>通常为非商业</td><td class="kind k-nc">非商业</td><td class="c">1</td></tr><tr><td>SIPRI</td><td>非商业且使用量 <10% 数据集</td><td class="kind k-nc">非商业</td><td class="c">1</td></tr><tr><td>Polity5/QoG</td><td>通常 CC BY-NC</td><td class="kind k-nc">非商业</td><td class="c">1</td></tr><tr><td>V-Dem/QoG</td><td>CC BY-SA；经 QoG 间接获取</td><td class="kind k-sa">同许可</td><td class="c">3</td></tr><tr><td>V-Dem/OWID</td><td>CC BY-SA</td><td class="kind k-sa">同许可</td><td class="c">2</td></tr><tr><td>OWID/V-Dem</td><td>CC BY-SA</td><td class="kind k-sa">同许可</td><td class="c">1</td></tr><tr><td>OWID/FAO</td><td>逐图不同（FAO 为 CC BY 4.0）</td><td class="kind k-unclear">待确认</td><td class="c">3</td></tr><tr><td>OWID/UNDP</td><td>逐图不同</td><td class="kind k-unclear">待确认</td><td class="c">2</td></tr><tr><td>UNGA Ideal Points</td><td>可能 CC0</td><td class="kind k-unclear">待确认</td><td class="c">2</td></tr><tr><td>OWID/EI</td><td>逐图不同</td><td class="kind k-unclear">待确认</td><td class="c">1</td></tr><tr><td>OWID/UN</td><td>逐图不同</td><td class="kind k-unclear">待确认</td><td class="c">1</td></tr><tr><td>OWID/IUCN</td><td>逐图不同</td><td class="kind k-unclear">待确认</td><td class="c">1</td></tr><tr><td>OWID/Maddison</td><td>逐图不同</td><td class="kind k-unclear">待确认</td><td class="c">1</td></tr><tr><td>COW NMC v7</td><td>需引用；商业受限</td><td class="kind k-unclear">待确认</td><td class="c">1</td></tr><tr><td>Gallup/OWID</td><td>逐图不同；Gallup 有版权限制</td><td class="kind k-unclear">待确认</td><td class="c">1</td></tr><tr><td>OWID/UNODC</td><td>逐图不同</td><td class="kind k-unclear">待确认</td><td class="c">1</td></tr><tr><td>OWID/WHO</td><td>逐图不同</td><td class="kind k-unclear">待确认</td><td class="c">1</td></tr><tr><td>透明国际</td><td>署名并限制商业使用</td><td class="kind k-unclear">待确认</td><td class="c">1</td></tr><tr><td>World Bank</td><td>CC BY 4.0</td><td class="kind k-permissive">可再分发</td><td class="c">63</td></tr><tr><td>UN WPP 2024</td><td>CC BY 3.0 IGO</td><td class="kind k-permissive">可再分发</td><td class="c">4</td></tr><tr><td>FAOSTAT</td><td>CC BY 4.0</td><td class="kind k-permissive">可再分发</td><td class="c">2</td></tr><tr><td>Global Carbon Budget 2025</td><td>CC BY 4.0</td><td class="kind k-permissive">可再分发</td><td class="c">2</td></tr><tr><td>OWID/GCB</td><td>CC BY 4.0</td><td class="kind k-permissive">可再分发</td><td class="c">2</td></tr><tr><td>OWID/Ember</td><td>CC BY 4.0</td><td class="kind k-permissive">可再分发</td><td class="c">1</td></tr><tr><td>UCDP/PRIO ACD v26.1</td><td>CC BY 4.0</td><td class="kind k-permissive">可再分发</td><td class="c">1</td></tr></tbody></table></div>
-
     <div class="tblwrap"><table id="tblCat">
       <thead><tr>
         <th>领域</th><th>指标</th><th>来源</th><th>单位</th><th>方向</th>
@@ -845,7 +852,7 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
   数据来源：World Bank、UN WPP、WHO GHO、FAOSTAT、SIPRI、COW、UCDP、UNGA Ideal Points、
   V-Dem、Freedom House、Polity5、透明国际、QoG（哥德堡大学）、Our World in Data、Global Carbon Budget、Yale EPI<br>
   生成日期：2026-10-06 · 全部图表可交互（悬停查看数值、点击图例筛选、框选缩放）<br>
-  <span style="color:#5a6472">v2.4.4　·　里探｜2026/10/05</span>
+  <span style="color:#5a6472">v2.4.5　·　里探｜2026/10/05</span>
 </div></footer>
 <div class="wm">里探｜2026/10/05</div>
 
@@ -2236,6 +2243,7 @@ function renderCatalog(){
   tb.innerHTML = html;
   if(el("catShown")) el("catShown").textContent = rows.length;
   if(el("catN")) el("catN").textContent = DATA.catalog.length;
+  if(el("catN2")) el("catN2").textContent = DATA.catalog.length;
 }
 function bindCatalog(){
   var s = el("catSearch");
