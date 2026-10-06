@@ -1,12 +1,12 @@
 # gov-capacity-report-site
 
-《治理能力国际对比报告》的**发布仓库**。
+《国家治理能力的国际比较》的**发布仓库**。
 
 ## 🌐 线上地址
 
 | 托管 | 地址 | 说明 |
 |---|---|---|
-| **GitHub Pages** | https://insseek.github.io/gov-capacity-report-site/ | **逐字节等于本仓库的文件**，适合核对 |
+| **GitHub Pages** | https://insseek.github.io/gov-capacity-report-site/ | 与本仓库文件**逐字节相同**，适合核对 |
 | **Netlify** | https://gov-capacity-report.netlify.app/ | 访问更快，但服务端会注入内容（见下） |
 
 两个地址指向**同一份文件**，互为备份。推送到 `main` 后两边都会自动重新部署。

@@ -1,7 +1,8 @@
 # 许可
 
-本仓库只存放一份文件 `index.html`——由
+本仓库围绕一份文件：`index.html`——由
 [gov-capacity-report](https://github.com/insseek/gov-capacity-report) 生成的报告。
+其余文件是部署配置与许可说明，不含内容。
 
 ## 报告内容：CC BY-NC-SA 4.0
 
