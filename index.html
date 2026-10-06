@@ -241,7 +241,7 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
 <header>
   <div class="wrap">
     <h1>国家治理能力的国际比较<br>——中国与美、日、德、法、英、俄、印、韩、新九国的比较研究 · 1949–2026</h1>
-    <div class="sub">v2.3.7　·　<a href="#composition" class="sublink">五大类 · 十二领域</a> · 116 项指标 · 统一年度底表 · 实测／估算／推断三级可信度标注</div>
+    <div class="sub">v2.3.8　·　<a href="#composition" class="sublink">五大类 · 十二领域</a> · 116 项指标 · 统一年度底表 · 实测／估算／推断三级可信度标注</div>
     <div class="tags">
       <span class="tag">数据截至 2026-10-06</span>
       <span class="tag">116 项指标</span>
@@ -319,7 +319,7 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
 <!-- ================= 1 综合排名 ================= -->
 <section id="s1">
   <h2><span class="n">01</span>综合评分与排名演变</h2>
-  <p class="lead">综合评分为 12 个领域评分的<b>等权平均</b>（计算方式见 <a href="#s7" class="inlink">7.2 归一化</a>）。它衡量的是<b>治理产出与能力</b>，不代表制度模式的优劣判断。</p>
+  <p class="lead">综合评分为 12 个领域评分的<b>等权平均</b>（计算方式见 <a href="#n7_2" class="inlink">7.2 归一化</a>）。它衡量的是<b>治理产出与能力</b>，不代表制度模式的优劣判断。</p>
 
   <div class="comp" id="composition"><div class="chead">综合评分的构成：五大类十二个领域　<span class="cref">完整指标清单见 <a href="#s7">7.1 指标体系结构</a></span></div><div class="crow"><span class="ccat">生存基础与资源保障</span><span class="cdom">粮食、能源与资源安全 · 人口与公共卫生 · 基本民生与社会保障 · 防灾减灾与应急管理 · 生态环境与生物多样性</span></div><div class="crow"><span class="ccat">发展动力与经济支撑</span><span class="cdom">经济安全与产业发展 · 科学技术发展与创新</span></div><div class="crow"><span class="ccat">国家安全与防御体系</span><span class="cdom">国防与综合安全</span></div><div class="crow"><span class="ccat">社会凝聚力与价值认同</span><span class="cdom">文化认同与精神建设 · 社会治理与社会信任</span></div><div class="crow"><span class="ccat">治理体系与外部环境</span><span class="cdom">制度与政治安全 · 国际关系与全球治理</span></div></div>
 
@@ -329,10 +329,10 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
     <button class="btn" data-view="mid">近30年 1996–2026（每3年）</button>
     <button class="btn" data-view="recent">近10年 2016–2026（每年）</button>
     <span class="lbl" style="margin-left:auto">权重方案：</span>
-    <button class="btn mini on" data-mode="equal">等权</button>
-    <button class="btn mini" data-mode="outcome_only">仅结果型</button>
-    <button class="btn mini" data-mode="hard_only">仅硬数据</button>
-    <button class="btn mini" data-mode="entropy">熵权</button>
+    <button class="btn mini on" data-mode="equal" title="十二领域等权，领域内指标等权——主口径，最直观">等权</button>
+    <button class="btn mini" data-mode="outcome_only" title="剔除 WGI、V-Dem、自由之家、Polity5、CPI 等程序性指标——区分「治理产出」与「制度形态」">仅结果型</button>
+    <button class="btn mini" data-mode="hard_only" title="在「仅结果型」基础上再剔除 WVS 等主观调查指标——最保守口径，只保留客观年度统计">仅硬数据</button>
+    <button class="btn mini" data-mode="entropy" title="按指标离散程度客观赋权（熵权法）——检验结论是否由少数高方差指标主导">熵权</button>
     <span class="lbl" style="margin-left:auto">　</span>
     <button class="btn mini on" id="toggleEvents">事件标注：开</button>
   </div>
@@ -350,11 +350,6 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
     <p class="chartTitle">综合评分轨迹</p>
     <p class="chartNote" id="noteOverall">点击图例可隐藏/显示国家；中国以红色加粗突出。</p>
     <div id="cOverall" class="chart lg"></div>
-    <p class="chartNote" style="margin-top:10px">
-      说明：图中竖向虚线为历史事件，旁边斜排小字是事件名。20 个事件挤在 77 年里，
-      斜排文字不可避免地重叠、多数读不清——<b>这是有意接受的取舍</b>，事件名的可读版本在
-      <b>鼠标悬停的提示框底部</b>，以及第 03 节末尾的「关键节点对照表」。
-    </p>
   </div>
 
   <div class="card">
@@ -602,7 +597,7 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
   </div>
 
   <div class="card">
-    <h3 style="margin-top:0">7.2 归一化：为什么可以跨年比较</h3>
+    <h3 id="n7_2" style="margin-top:0">7.2 归一化：为什么可以跨年比较</h3>
     <p>每个指标在本报告<b>全部国家、全部年份</b>的观测值上做一次<b>全局 min–max 归一化</b>到
     0–100：出现过的最差值为 0、最优值为 100，其余按比例落在中间。所以某一项得「80 分」的意思是
     ——在这个指标上，该国已走完从样本最差到样本最好的八成。<b>它不是排名，也不是百分制考试分数。</b></p>
@@ -640,6 +635,9 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
 
   <div class="card">
     <h3 style="margin-top:0">7.5 四套权重方案</h3>
+    <p>同一份数据，换一套权重就是换一个问法。四套方案不是「哪个更对」，而是用来检验
+    结论对权重有多敏感——<b>若四套给出同一方向，结论才站得住</b>。
+    第 01 节图表上方的四个按钮即切换这四套，图与表会同步重算。</p>
     <table>
       <thead><tr><th>方案</th><th>定义</th><th>用途</th></tr></thead>
       <tbody>
@@ -816,7 +814,7 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
   数据来源：World Bank、UN WPP、WHO GHO、FAOSTAT、SIPRI、COW、UCDP、UNGA Ideal Points、
   V-Dem、Freedom House、Polity5、透明国际、QoG（哥德堡大学）、Our World in Data、Global Carbon Budget、Yale EPI<br>
   生成日期：2026-10-06 · 全部图表可交互（悬停查看数值、点击图例筛选、框选缩放）<br>
-  <span style="color:#5a6472">v2.3.7　·　里探｜2026/10/05</span>
+  <span style="color:#5a6472">v2.3.8　·　里探｜2026/10/05</span>
 </div></footer>
 <div class="wm">里探｜2026/10/05</div>
 
