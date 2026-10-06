@@ -256,7 +256,7 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
 <header>
   <div class="wrap">
     <h1>国家治理能力的国际比较<br>——中国与美、日、德、法、英、俄、印、韩、新九国的比较研究 · 1949–2026</h1>
-    <div class="sub">v2.4.1　·　<a href="#composition" class="sublink">五大类 · 十二领域</a> · 116 项指标 · 统一年度底表 · 实测／估算／推断三级可信度标注</div>
+    <div class="sub">v2.4.2　·　<a href="#composition" class="sublink">五大类 · 十二领域</a> · 116 项指标 · 统一年度底表 · 实测／估算／推断三级可信度标注</div>
     <div class="tags">
       <span class="tag">数据截至 2026-10-06</span>
       <span class="tag">116 项指标</span>
@@ -623,10 +623,8 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
       <span class="end">综合评分</span>
     </div>
     <p class="steptip">四步依次如下。前三步产出一个「指标值」，第四步把它合成为评分。</p>
-  </div>
 
-  <div class="card">
-    <h4 style="margin-top:0">第一步 · 归一化：把量纲不同的指标放到同一把尺上</h4>
+    <h4>第一步 · 归一化：把量纲不同的指标放到同一把尺上</h4>
     <p>每个指标在本报告<b>全部国家、全部年份</b>的观测值上做一次<b>全局 min–max 归一化</b>到
     0–100：出现过的最差值为 0、最优值为 100，其余按比例落在中间。所以某一项得「80 分」的意思是
     ——在这个指标上，该国已走完从样本最差到样本最好的八成。<b>它不是排名，也不是百分制考试分数。</b></p>
@@ -637,10 +635,8 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
     会把其余国家压到接近 0。方向校正：数值越低越好的指标（婴儿死亡率、基尼系数、人均碳排放、冲突数等）
     取 <code>100 − score</code>。少数仅作规模参照的指标（人口、国土面积、生育率）标记为「仅参照」，
     不参与评分。</p>
-  </div>
 
-  <div class="card">
-    <h4 style="margin-top:0">第二步 · 可信度标注：缺失值怎么补、怎么标</h4>
+    <h4>第二步 · 可信度标注：缺失值怎么补、怎么标</h4>
     <table>
       <thead><tr><th>等级</th><th>含义</th><th>本报告占比</th></tr></thead>
       <tbody>
@@ -654,16 +650,12 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
       中国大陆 6 波、台湾地区 4 波。若在波次之间线性插值，会凭空制造出平滑趋势，掩盖 1989、1997、2008 等真实断裂。
       因此这些指标改用<b>阶梯保持</b>（沿用上一波观测值）并一律标记为「推断」。
     </div>
-  </div>
 
-  <div class="card">
-    <h4 style="margin-top:0">第三步 · 覆盖率门槛：什么时候给分</h4>
+    <h4>第三步 · 覆盖率门槛：什么时候给分</h4>
     <p>只有当某国在某年、某领域内的可用指标权重之和 ≥ 40% 时，才给该领域计分，否则记为缺失（图中显示为灰色或断点）。
     这是为了防止「数据少的国家因为只剩强项而评分虚高」。综合评分要求至少 5 个领域有分，并同时输出该点由几个领域支撑。</p>
-  </div>
 
-  <div class="card">
-    <h4 style="margin-top:0">第四步 · 合成与权重：各项占多重</h4>
+    <h4>第四步 · 合成与权重：各项占多重</h4>
     <p>前三步算出「每个指标值多少分」；这一步决定<b>它们怎么合到一起</b>——
     先合成领域评分，再合成综合评分。本报告并列 <b>四套评分口径</b>，用交叉验证代替单一赋权。</p>
     <p>四套不是「哪个更对」，而是四种问法。注意其中<b>前两套换的是权重，后两套换的是指标集合</b>：</p>
@@ -844,7 +836,7 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
   数据来源：World Bank、UN WPP、WHO GHO、FAOSTAT、SIPRI、COW、UCDP、UNGA Ideal Points、
   V-Dem、Freedom House、Polity5、透明国际、QoG（哥德堡大学）、Our World in Data、Global Carbon Budget、Yale EPI<br>
   生成日期：2026-10-06 · 全部图表可交互（悬停查看数值、点击图例筛选、框选缩放）<br>
-  <span style="color:#5a6472">v2.4.1　·　里探｜2026/10/05</span>
+  <span style="color:#5a6472">v2.4.2　·　里探｜2026/10/05</span>
 </div></footer>
 <div class="wm">里探｜2026/10/05</div>
 
