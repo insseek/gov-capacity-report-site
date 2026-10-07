@@ -345,7 +345,7 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
 <header>
   <div class="wrap">
     <h1>国家治理能力的国际比较<br>——中国与美、日、德、法、英、俄、印、韩、新九国的比较研究 · 1949–2026</h1>
-    <div class="sub">v3.1.9　·　<a href="#n7_1" class="sublink">五大类 · 十二领域</a> · 162 项指标 · 统一年度底表 · 实测／估算／推断三级可信度标注</div>
+    <div class="sub">v3.1.10　·　<a href="#n7_1" class="sublink">五大类 · 十二领域</a> · 162 项指标 · 统一年度底表 · 实测／估算／推断三级可信度标注</div>
     <div class="tags">
       <span class="tag">发布 2026-10-08</span>
       <span class="tag">162 项指标</span>
@@ -939,7 +939,7 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
   数据来源：World Bank、UN WPP、WHO GHO、FAOSTAT、SIPRI、COW、UCDP、UNGA Ideal Points、
   V-Dem、Freedom House、Polity5、透明国际、QoG（哥德堡大学）、Our World in Data、Global Carbon Budget、Yale EPI<br>
   生成日期：2026-10-08 · 全部图表可交互（悬停查看数值、点击图例筛选、框选缩放）<br>
-  <span style="color:#5a6472">v3.1.9　·　里探｜2026/10/05</span>
+  <span style="color:#5a6472">v3.1.10　·　里探｜2026/10/05</span>
 </div></footer>
 <div class="wm">里探｜2026/10/05</div>
 
@@ -997,1667 +997,1998 @@ const DATA = {"entities":[{"iso":"CHN","cn":"中国","en":"China","main":true,"c
    治理能力对比报告 · 图表逻辑
    数据来自 DATA（由 export.py 生成），图表库为内嵌 ECharts 5.5.1
    ============================================================ */
-(function(){
-"use strict";
+(function () {
+  const Y = DATA.years;
+  const ENT = DATA.entities;
+  const DOMS = DATA.domains;
+  const CATS = DATA.categories;
+  const MODE_CN = {}; DATA.modes.forEach((m) => { MODE_CN[m.id] = m.cn; });
 
-var Y    = DATA.years;
-var ENT  = DATA.entities;
-var DOMS = DATA.domains;
-var CATS = DATA.categories;
-var MODE_CN = {}; DATA.modes.forEach(function(m){ MODE_CN[m.id]=m.cn; });
+  const ISO = ENT.map((e) => e.iso);
+  const MAIN = ENT.filter((e) => e.main).map((e) => e.iso);
+  const BY = {}; ENT.forEach((e) => { BY[e.iso] = e; });
+  const YIDX = {}; Y.forEach((y, i) => { YIDX[y] = i; });
 
-var ISO    = ENT.map(function(e){return e.iso;});
-var MAIN   = ENT.filter(function(e){return e.main;}).map(function(e){return e.iso;});
-var BY     = {}; ENT.forEach(function(e){ BY[e.iso]=e; });
-var YIDX   = {}; Y.forEach(function(y,i){ YIDX[y]=i; });
+  const HIGH_INCOME = ['USA', 'JPN', 'DEU', 'FRA', 'GBR', 'KOR', 'SGP'];
+  // 重大历史事件：来自 DATA.events（src/events.py 是唯一数据源）
+  const SIGN_COLOR = { pos: '#0f7b4f', neg: '#b45309', neutral: '#8b95a3' };
+  const SIGN_TEXT = { pos: '正向', neg: '负向', neutral: '中性' };
+  let showEvents = true;
 
-var HIGH_INCOME = ["USA","JPN","DEU","FRA","GBR","KOR","SGP"];
-// 重大历史事件：来自 DATA.events（src/events.py 是唯一数据源）
-var SIGN_COLOR = { pos:"#0f7b4f", neg:"#b45309", neutral:"#8b95a3" };
-var SIGN_TEXT  = { pos:"正向", neg:"负向", neutral:"中性" };
-var showEvents = true;
+  // 把事件表编译成 ECharts 的 markLine / markArea 数据
+  // 同年多个事件合并为一条线，标签用「·」连接
+  function buildEventMarks(events, withLabels) {
+    const lines = []; const areas = [];
+    const byYear = {};
+    (events || []).forEach((e) => {
+      const col = SIGN_COLOR[e.sign] || '#b0b8c4';
+      if (e.rng) { // 时段事件 → 阴影带
+        areas.push([{ xAxis: String(e.rng[0]), itemStyle: { color: col, opacity: 0.075 } },
+          { xAxis: String(e.rng[1]) }]);
+        return;
+      }
+      (byYear[e.year] = byYear[e.year] || []).push(e);
+    });
+    Object.keys(byYear).map(Number).sort((a, b) => a - b).forEach((y) => {
+      const es = byYear[y];
+      const col = SIGN_COLOR[es[0].sign] || '#b0b8c4';
+      // 不画文字标签：20 个事件挤在 77 年里，任何旋转角度都会重叠或被裁切。
+      // 事件名改由「hover 提示框」与下方独立的「事件时间轴」承载。
+      lines.push({
+        xAxis: String(y),
+        lineStyle: { color: col, type: 'dashed', width: 1, opacity: 0.55 },
+        label: withLabels ? {
+          show: true, rotate: -58, fontSize: 9.5, color: col, fontFamily: FONT,
+          // 旋转角决定文字从锚点往哪个方向延伸：
+          //   正值(58°)  → 朝右上延伸，落在绘图区外
+          //   负值(-58°) → 朝右下延伸，落在绘图区内（鼠标移到标签上也能触发提示框）
+          position: 'insideEndTop', distance: 4, align: 'left', verticalAlign: 'top',
+          formatter: es.map((e) => e.name).join('·'),
+        } : { show: false }, // 必须显式关闭，否则 markLine 默认会显示年份数字
+      });
+    });
+    return { lines, areas };
+  }
 
-// 把事件表编译成 ECharts 的 markLine / markArea 数据
-// 同年多个事件合并为一条线，标签用「·」连接
-function buildEventMarks(events, withLabels){
-  var lines = [], areas = [], byYear = {};
-  (events || []).forEach(function(e){
-    var col = SIGN_COLOR[e.sign] || "#b0b8c4";
-    if(e.rng){                       // 时段事件 → 阴影带
-      areas.push([{ xAxis:String(e.rng[0]), itemStyle:{ color:col, opacity:0.075 } },
-                  { xAxis:String(e.rng[1]) }]);
-      return;
+  /* ---------- 全局状态 ---------- */
+  // 默认时间范围截止到「数据年」(DATA_END)，而非面板末年。
+  // 面板末年（如 2026）实测占比可能低至个位数，默认展示会让读者把外推值当作数据。
+  const DE = (DATA.meta && DATA.meta.data_end) || 2024;
+  const PE = (DATA.meta && DATA.meta.panel_end) || 2026;
+  let view = { start: 1949, end: PE, tick: '5y' };
+  let mode = 'equal';
+  const radarPicked = { CHN: true, USA: true, DEU: true, JPN: true };
+  // 排名变迁图默认只显示 3 国——10 国 78 年共约 780 条线段，全画出来无法辨认。
+  // 选中国（主线）、美国（对标）、日本（报告中有明确叙事的对手：2010 年 GDP 被中国超越）。
+  const bumpPicked = { CHN: true, USA: true, JPN: true };
+
+  const VIEWS = {
+  // 时间轴一律到面板末年；数据年之后的派生指数为空值，图上自然留白
+    long: { start: 1949, end: PE, tick: '5y' },
+    mid: { start: 1996, end: PE, tick: '3y' },
+    recent: { start: 2016, end: PE, tick: '1y' },
+  };
+
+  /* ---------- 工具 ---------- */
+  // 数据稀疏期：某年平均实测占比低于阈值的连续年份区间。
+  // 早期（1949–1990）多数国际统计尚未建立，领域分大量依赖插值，
+  // 这些年份的数值不宜与后期同等解读——用浅灰带明确标出。
+  const SPARSE_THRESHOLD = 0.50;
+  function sparseBands(ys) {
+    const cov = DATA.coverage || {};
+    const isos = ENT.map((e) => e.iso);
+    const out = [];
+    let run = null;
+    ys.forEach((y, i) => {
+      const vals = isos.map((iso) => {
+        const a = cov[iso]; return a ? a[YIDX[y]] : null;
+      })
+        .filter((v) => v !== null && v !== undefined);
+      const m = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 1;
+      if (m < SPARSE_THRESHOLD) { if (run === null) run = y; } else if (run !== null) { out.push([String(run), String(ys[i - 1])]); run = null; }
+    });
+    if (run !== null) out.push([String(run), String(ys[ys.length - 1])]);
+    return out;
+  }
+  function sparseMarkArea(ys) {
+    const b = sparseBands(ys);
+    if (!b.length) return null;
+    // 只在首尾两条带上显示标签：中间的带各带一个标签会叠加成一团，
+    // 而末尾那条说明的是「数据年之后留白」，含义与历史稀疏期不同，需要单独点明。
+    const last = b.length - 1;
+    return {
+      silent: true, itemStyle: { color: '#94a3b8', opacity: 0.10 },
+      label: { show: false },
+      data: b.map((p, i) => [
+        {
+          xAxis: p[0], itemStyle: { color: '#94a3b8', opacity: 0.10 },
+          label: {
+            show: (i === 0 || i === last), position: 'insideTop',
+            color: '#8b95a3', fontSize: 10, fontFamily: FONT,
+            formatter: i === last && last > 0 ? '无可靠数据' : '数据稀疏期',
+          },
+        },
+        { xAxis: p[1] }]),
+    };
+  }
+
+  // 命中年份的事件：时点事件取同年，时段事件取区间内
+  function eventsAtYear(evs, y) {
+    return (evs || []).filter((e) => (e.rng ? (y >= e.rng[0] && y <= e.rng[1]) : (e.year === y)));
+  }
+  // 提示框底部的事件区块（显示在各国数据下方）
+  function eventTipHTML(evs, y) {
+    const hit = eventsAtYear(evs, y);
+    if (!hit.length) return '';
+    return '<div style="margin-top:7px;padding-top:6px;border-top:1px dashed #e3e7ec;'
+    + `font-size:11.5px;line-height:1.5">${
+      hit.map((e) => {
+        const c = SIGN_COLOR[e.sign] || '#8b95a3';
+        return `<div><span style="color:${c};font-weight:700">▪ ${e.name}</span>`
+          + `<span style="color:#8b95a3">　${SIGN_TEXT[e.sign] || ''}</span></div>`;
+      }).join('')
+    }</div>`;
+  }
+  function yearsInView() { return Y.filter((y) => y >= view.start && y <= view.end); }
+  function nth(arr, iso) { return arr && arr[iso] ? arr[iso] : null; }
+  function pick(block, iso, ys) {
+    const src = block[iso]; if (!src) return ys.map(() => null);
+    return ys.map((y) => { const v = src[YIDX[y]]; return (v === null || v === undefined) ? null : v; });
+  }
+  function avg(a) {
+    const f = a.filter((x) => x !== null && x !== undefined && !Number.isNaN(x));
+    return f.length ? f.reduce((p, c) => p + c, 0) / f.length : null;
+  }
+  function median(a) {
+    const f = a.filter((x) => x !== null && !Number.isNaN(x)).sort((p, q) => p - q);
+    if (!f.length) return null; const m = Math.floor(f.length / 2);
+    return f.length % 2 ? f[m] : (f[m - 1] + f[m]) / 2;
+  }
+  function r1(x) { return x === null || x === undefined ? null : Math.round(x * 10) / 10; }
+  function el(id) { return document.getElementById(id); }
+  function chart(id) {
+    const d = el(id); if (!d) return null;
+    const c = echarts.getInstanceByDom(d) || echarts.init(d, null, { renderer: 'canvas' });
+    return c;
+  }
+
+  const charts = {};
+  function draw(id, opt) {
+    const c = charts[id] || (charts[id] = chart(id));
+    if (!c) return null;
+    // 所有图表统一加右下角水印
+    const wm = (DATA.meta && DATA.meta.watermark) || '';
+    if (wm) {
+      opt.graphic = (opt.graphic || []).concat([{
+        type: 'text', right: 6, bottom: 2, silent: true, z: 1,
+        style: { text: wm, fontSize: 10, fill: 'rgba(90,100,114,.40)', fontFamily: FONT },
+      }]);
     }
-    (byYear[e.year] = byYear[e.year] || []).push(e);
-  });
-  Object.keys(byYear).map(Number).sort(function(a,b){return a-b;}).forEach(function(y){
-    var es = byYear[y], col = SIGN_COLOR[es[0].sign] || "#b0b8c4";
-    // 不画文字标签：20 个事件挤在 77 年里，任何旋转角度都会重叠或被裁切。
-    // 事件名改由「hover 提示框」与下方独立的「事件时间轴」承载。
-    lines.push({
-      xAxis: String(y),
-      lineStyle: { color:col, type:"dashed", width:1, opacity:0.55 },
-      label: withLabels ? {
-        show: true, rotate: -58, fontSize: 9.5, color: col, fontFamily: FONT,
-        // 旋转角决定文字从锚点往哪个方向延伸：
-        //   正值(58°)  → 朝右上延伸，落在绘图区外
-        //   负值(-58°) → 朝右下延伸，落在绘图区内（鼠标移到标签上也能触发提示框）
-        position: "insideEndTop", distance: 4, align: "left", verticalAlign: "top",
-        formatter: es.map(function(e){ return e.name; }).join("·")
-      } : { show: false }     // 必须显式关闭，否则 markLine 默认会显示年份数字
+    c.setOption(opt, true);
+    return c;
+  }
+  window.addEventListener('resize', () => {
+    Object.keys(charts).forEach((k) => {
+      try { charts[k].resize(); } catch { /* 图表已销毁，忽略 */ }
     });
   });
-  return { lines: lines, areas: areas };
-}
 
-/* ---------- 全局状态 ---------- */
-// 默认时间范围截止到「数据年」(DATA_END)，而非面板末年。
-// 面板末年（如 2026）实测占比可能低至个位数，默认展示会让读者把外推值当作数据。
-var DE  = (DATA.meta && DATA.meta.data_end)  || 2024;
-var PE  = (DATA.meta && DATA.meta.panel_end) || 2026;
-var view = { start:1949, end:PE, tick:"5y" };
-var mode = "equal";
-var radarPicked = { CHN:true, USA:true, DEU:true, JPN:true };
-// 排名变迁图默认只显示 3 国——10 国 78 年共约 780 条线段，全画出来无法辨认。
-// 选中国（主线）、美国（对标）、日本（报告中有明确叙事的对手：2010 年 GDP 被中国超越）。
-var bumpPicked = { CHN:true, USA:true, JPN:true };
-
-var VIEWS = {
-  // 时间轴一律到面板末年；数据年之后的派生指数为空值，图上自然留白
-  long:   { start:1949, end:PE, tick:"5y" },
-  mid:    { start:1996, end:PE, tick:"3y" },
-  recent: { start:2016, end:PE, tick:"1y" }
-};
-
-/* ---------- 工具 ---------- */
-// 数据稀疏期：某年平均实测占比低于阈值的连续年份区间。
-// 早期（1949–1990）多数国际统计尚未建立，领域分大量依赖插值，
-// 这些年份的数值不宜与后期同等解读——用浅灰带明确标出。
-var SPARSE_THRESHOLD = 0.50;
-function sparseBands(ys){
-  var cov = DATA.coverage || {};
-  var isos = ENT.map(function(e){ return e.iso; });
-  var out = [], run = null;
-  ys.forEach(function(y, i){
-    var vals = isos.map(function(iso){
-      var a = cov[iso]; return a ? a[YIDX[y]] : null; })
-      .filter(function(v){ return v !== null && v !== undefined; });
-    var m = vals.length ? vals.reduce(function(a,b){ return a+b; }, 0) / vals.length : 1;
-    if(m < SPARSE_THRESHOLD){ if(run === null) run = y; }
-    else { if(run !== null){ out.push([String(run), String(ys[i-1])]); run = null; } }
-  });
-  if(run !== null) out.push([String(run), String(ys[ys.length-1])]);
-  return out;
-}
-function sparseMarkArea(ys, xIdx, yIdx){
-  var b = sparseBands(ys);
-  if(!b.length) return null;
-  // 只在首尾两条带上显示标签：中间的带各带一个标签会叠加成一团，
-  // 而末尾那条说明的是「数据年之后留白」，含义与历史稀疏期不同，需要单独点明。
-  var last = b.length - 1;
-  return { silent:true, itemStyle:{ color:"#94a3b8", opacity:0.10 },
-    label:{ show:false },
-    data: b.map(function(p, i){ return [
-      { xAxis:p[0], itemStyle:{ color:"#94a3b8", opacity:0.10 },
-        label:{ show: (i === 0 || i === last), position:"insideTop",
-                color:"#8b95a3", fontSize:10, fontFamily:FONT,
-                formatter: i === last && last > 0 ? "无可靠数据" : "数据稀疏期" } },
-      { xAxis:p[1] } ]; }) };
-}
-
-// 命中年份的事件：时点事件取同年，时段事件取区间内
-function eventsAtYear(evs, y){
-  return (evs || []).filter(function(e){
-    return e.rng ? (y >= e.rng[0] && y <= e.rng[1]) : (e.year === y);
-  });
-}
-// 提示框底部的事件区块（显示在各国数据下方）
-function eventTipHTML(evs, y){
-  var hit = eventsAtYear(evs, y);
-  if(!hit.length) return "";
-  return '<div style="margin-top:7px;padding-top:6px;border-top:1px dashed #e3e7ec;'
-    + 'font-size:11.5px;line-height:1.5">'
-    + hit.map(function(e){
-        var c = SIGN_COLOR[e.sign] || "#8b95a3";
-        return '<div><span style="color:'+c+';font-weight:700">▪ '+e.name+'</span>'
-          + '<span style="color:#8b95a3">　'+(SIGN_TEXT[e.sign]||"")+'</span></div>';
-      }).join("")
-    + '</div>';
-}
-function yearsInView(){ return Y.filter(function(y){ return y>=view.start && y<=view.end; }); }
-function nth(arr, iso){ return arr && arr[iso] ? arr[iso] : null; }
-function pick(block, iso, ys){
-  var src = block[iso]; if(!src) return ys.map(function(){return null;});
-  return ys.map(function(y){ var v = src[YIDX[y]]; return (v===null||v===undefined)?null:v; });
-}
-function avg(a){ var f=a.filter(function(x){return x!==null&&x!==undefined&&!isNaN(x);});
-  return f.length? f.reduce(function(p,c){return p+c;},0)/f.length : null; }
-function median(a){ var f=a.filter(function(x){return x!==null&&!isNaN(x);}).sort(function(p,q){return p-q;});
-  if(!f.length) return null; var m=Math.floor(f.length/2);
-  return f.length%2 ? f[m] : (f[m-1]+f[m])/2; }
-function r1(x){ return x===null||x===undefined?null:Math.round(x*10)/10; }
-function el(id){ return document.getElementById(id); }
-function chart(id){ var d=el(id); if(!d) return null;
-  var c=echarts.getInstanceByDom(d)||echarts.init(d,null,{renderer:"canvas"});
-  return c; }
-
-var charts = {};
-function draw(id, opt){
-  var c = charts[id] || (charts[id]=chart(id));
-  if(!c) return null;
-  // 所有图表统一加右下角水印
-  var wm = (DATA.meta && DATA.meta.watermark) || "";
-  if(wm){
-    opt.graphic = (opt.graphic || []).concat([{
-      type:"text", right:6, bottom:2, silent:true, z:1,
-      style:{ text:wm, fontSize:10, fill:"rgba(90,100,114,.40)", fontFamily:FONT }
-    }]);
+  /* ---------- 通用配置 ---------- */
+  const FONT = '"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
+  function axisStyle() {
+    return {
+      axisLine: { lineStyle: { color: '#e3e7ec' } },
+      axisTick: { show: false },
+      axisLabel: { color: '#8b95a3', fontSize: 11, fontFamily: FONT },
+      splitLine: { lineStyle: { color: '#f0f3f6' } },
+    };
   }
-  c.setOption(opt, true);
-  return c;
-}
-window.addEventListener("resize", function(){
-  Object.keys(charts).forEach(function(k){ try{ charts[k].resize(); }catch(e){} });
-});
+  function baseGrid() { return { left: 52, right: 26, top: 38, bottom: 38, containLabel: true }; }
+  // 同时有「纵轴名」与「图例」的图：baseGrid 的 top:38 会让轴名压在图上例那行。
+  // 轴名渲染在绘图区上沿之上，故须把 top 让到图例高度之外。
+  function gridWithAxisName() { return { left: 52, right: 26, top: 58, bottom: 38, containLabel: true }; }
+  // 合并轴配置：必须以 axisStyle() 为基底再叠自定义项，
+  // 否则 axis({...自定义}) 会把 axisLabel 整体替换掉，
+  // 导致 formatter / interval / show:false 等全部失效（本项目实际踩过）。
+  function axis(cfg) {
+    // 就地补默认值：调用方常不传。改成不可变要另起一个变量，而函数其余部分
+    // 全用这个参数名，改名只会更绕。
+    // eslint-disable-next-line no-param-reassign
+    cfg = cfg || {};
+    const base = axisStyle();
+    const out = { ...base, ...cfg };
+    out.axisLabel = { ...base.axisLabel, ...cfg.axisLabel || {} };
+    return out;
+  }
+  function tip(extra) {
+    const o = {
+      trigger: 'axis', axisPointer: { type: 'line', lineStyle: { color: '#c3cbd6' } },
+      backgroundColor: 'rgba(255,255,255,.97)', borderColor: '#e3e7ec', borderWidth: 1,
+      textStyle: { color: '#1a1d21', fontSize: 12.5, fontFamily: FONT },
+      extraCssText: 'box-shadow:0 4px 16px rgba(16,24,40,.1);border-radius:8px;padding:10px 12px',
+    };
+    if (extra) Object.keys(extra).forEach((k) => { o[k] = extra[k]; });
+    return o;
+  }
+  function lineSeries(iso, ys, block, opt) {
+    // 就地补默认值：调用方常不传。改成不可变要另起一个变量，而函数其余部分
+    // 全用这个参数名，改名只会更绕。
+    // eslint-disable-next-line no-param-reassign
+    opt = opt || {};
+    const e = BY[iso];
+    const isCN = iso === 'CHN';
+    return {
+      name: e.cn, type: 'line', smooth: false, symbol: 'circle',
+      symbolSize: isCN ? 5 : 3.5, showSymbol: false, // 默认不画点，悬停时由 ECharts 显示
+      lineStyle: { width: isCN ? 3 : 1.9, color: e.color, opacity: iso === 'TWN' ? 0.85 : 1 },
+      itemStyle: { color: e.color },
+      emphasis: { focus: 'series', lineStyle: { width: 4 } },
+      connectNulls: true,
+      z: isCN ? 10 : (iso === 'TWN' ? 8 : 3),
+      data: pick(block, iso, ys),
+      labelLayout: { hideOverlap: true },
+      endLabel: opt.endLabel === false ? undefined : {
+        show: iso === 'CHN', formatter: '{a}', color: e.color, fontSize: 11.5,
+        fontWeight: 'bold', fontFamily: FONT, distance: 8,
+      },
+    };
+  }
+  function legendCfg() {
+    return {
+      top: 0, left: 0, itemWidth: 14, itemHeight: 9, itemGap: 12,
+      textStyle: { color: '#5a6472', fontSize: 12, fontFamily: FONT },
+      data: ENT.map((e) => e.cn),
+    };
+  }
 
-/* ---------- 通用配置 ---------- */
-var FONT = '"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
-function axisStyle(){ return {
-  axisLine:{lineStyle:{color:"#e3e7ec"}},
-  axisTick:{show:false},
-  axisLabel:{color:"#8b95a3",fontSize:11,fontFamily:FONT},
-  splitLine:{lineStyle:{color:"#f0f3f6"}}
-};}
-function baseGrid(){ return {left:52,right:26,top:38,bottom:38,containLabel:true}; }
-// 同时有「纵轴名」与「图例」的图：baseGrid 的 top:38 会让轴名压在图上例那行。
-// 轴名渲染在绘图区上沿之上，故须把 top 让到图例高度之外。
-function gridWithAxisName(){ return {left:52,right:26,top:58,bottom:38,containLabel:true}; }
-// 合并轴配置：必须以 axisStyle() 为基底再叠自定义项，
-// 否则 axis({...自定义}) 会把 axisLabel 整体替换掉，
-// 导致 formatter / interval / show:false 等全部失效（本项目实际踩过）。
-function axis(cfg){
-  cfg = cfg || {};
-  var base = axisStyle();
-  var out = Object.assign({}, base, cfg);
-  out.axisLabel = Object.assign({}, base.axisLabel, cfg.axisLabel || {});
-  return out;
-}
-function tip(extra){
-  var o = {trigger:"axis", axisPointer:{type:"line",lineStyle:{color:"#c3cbd6"}},
-    backgroundColor:"rgba(255,255,255,.97)", borderColor:"#e3e7ec", borderWidth:1,
-    textStyle:{color:"#1a1d21",fontSize:12.5,fontFamily:FONT},
-    extraCssText:"box-shadow:0 4px 16px rgba(16,24,40,.1);border-radius:8px;padding:10px 12px"};
-  if(extra) Object.keys(extra).forEach(function(k){ o[k]=extra[k]; });
-  return o;
-}
-function lineSeries(iso, ys, block, opt){
-  opt = opt || {};
-  var e = BY[iso];
-  var isCN = iso==="CHN";
-  return {
-    name: e.cn, type:"line", smooth:false, symbol:"circle",
-    symbolSize: isCN?5:3.5, showSymbol: false,   // 默认不画点，悬停时由 ECharts 显示
-    lineStyle:{ width: isCN?3:1.9, color:e.color, opacity: iso==="TWN"?0.85:1 },
-    itemStyle:{ color:e.color },
-    emphasis:{ focus:"series", lineStyle:{width:4} },
-    connectNulls:true,
-    z: isCN?10:(iso==="TWN"?8:3),
-    data: pick(block, iso, ys),
-    labelLayout:{hideOverlap:true},
-    endLabel: opt.endLabel===false?undefined:{
-      show: iso==="CHN", formatter:"{a}", color:e.color, fontSize:11.5,
-      fontWeight:"bold", fontFamily:FONT, distance:8
-    }
-  };
-}
-function legendCfg(){
-  return {top:0,left:0,itemWidth:14,itemHeight:9,itemGap:12,
-    textStyle:{color:"#5a6472",fontSize:12,fontFamily:FONT},
-    data: ENT.map(function(e){return e.cn;}) };
-}
-
-/* ============================================================
+  /* ============================================================
    01 综合评分轨迹
    ============================================================ */
-function renderOverall(){
-  var ys = yearsInView();
-  var blk = DATA.overall[mode];
-  var series = MAIN.concat(["TWN"]).map(function(iso){
-    return lineSeries(iso, ys, blk, {});
-  });
+  function renderOverall() {
+    const ys = yearsInView();
+    const blk = DATA.overall[mode];
+    const series = MAIN.concat(['TWN']).map((iso) => lineSeries(iso, ys, blk, {}));
 
-  // 事件标注：竖向虚线 + 斜排事件名。
-  // 标签会互相重叠、也读不清——这是接受的代价；可读性由 hover 提示框承担。
-  var evs = ((DATA.events && DATA.events.headline) || []).filter(function(e){
-    var hi = e.rng ? e.rng[1] : e.year;
-    return e.year <= view.end && hi >= view.start;
-  });
-  var EM = showEvents ? buildEventMarks(evs, true) : { lines: [], areas: [] };
+    // 事件标注：竖向虚线 + 斜排事件名。
+    // 标签会互相重叠、也读不清——这是接受的代价；可读性由 hover 提示框承担。
+    const evs = ((DATA.events && DATA.events.headline) || []).filter((e) => {
+      const hi = e.rng ? e.rng[1] : e.year;
+      return e.year <= view.end && hi >= view.start;
+    });
+    const EM = showEvents ? buildEventMarks(evs, true) : { lines: [], areas: [] };
 
-  var evSeries = { name:"__ev", type:"line", data:[], silent:true, z:1,
-    markLine:{ silent:true, symbol:"none", data: EM.lines },
-    markArea:{ silent:true, data: EM.areas } };
+    const evSeries = {
+      name: '__ev', type: 'line', data: [], silent: true, z: 1,
+      markLine: { silent: true, symbol: 'none', data: EM.lines },
+      markArea: { silent: true, data: EM.areas },
+    };
 
-  var sp = sparseMarkArea(ys, 0, 0);
-  var sparseSeries = sp ? { name:"__sp", type:"line", data:[], silent:true, z:0,
-                            markArea: sp } : null;
+    const sp = sparseMarkArea(ys, 0, 0);
+    const sparseSeries = sp ? {
+      name: '__sp', type: 'line', data: [], silent: true, z: 0,
+      markArea: sp,
+    } : null;
 
-  var allSeries = (sparseSeries ? [sparseSeries] : []).concat(series).concat([evSeries]);
+    const allSeries = (sparseSeries ? [sparseSeries] : []).concat(series).concat([evSeries]);
 
-  draw("cOverall", {
+    draw('cOverall', {
     // 标签在绘图区内部顶边；顶部留白只给图例，避免两者同高相撞
-    grid:{ left:52, right:60, top: 46, bottom:38, containLabel:true },
-    tooltip: tip({ formatter: function(ps){
-      var y = parseInt(ps[0].axisValue, 10);
-      var s = "<b>"+y+" 年</b><br/>";
-      ps.filter(function(p){ return p.value!==null && p.value!==undefined
-                               && p.seriesName!=="__ev" && p.seriesName!=="__sp"; })
-        .sort(function(a,b){ return b.value - a.value; })
-        .forEach(function(p){ s += p.marker+" "+p.seriesName+"　<b>"+r1(p.value)+"</b><br/>"; });
-      return s + eventTipHTML(evs, y);
-    }}),
-    legend: legendCfg(),
-    xAxis: axis({ type:"category", data: ys.map(String),
-      axisLabel:{ color:"#8b95a3", fontSize:11, fontFamily:FONT,
-        interval: view.tick==="1y"?0:(view.tick==="3y"?2:4) } }),
-    yAxis: axis({ type:"value", min:20, max:80 }),
-    series: allSeries
-  });
-  var n = el("noteOverall");
-  if(n) n.innerHTML = "当前评分口径：<b>"+MODE_CN[mode]+"</b>；时间范围 "+view.start+"–"+view.end+
-    "。";
-}
+      grid: { left: 52, right: 60, top: 46, bottom: 38, containLabel: true },
+      tooltip: tip({
+        formatter(ps) {
+          const y = parseInt(ps[0].axisValue, 10);
+          let s = `<b>${y} 年</b><br/>`;
+          ps.filter((p) => p.value !== null && p.value !== undefined
+                               && p.seriesName !== '__ev' && p.seriesName !== '__sp')
+            .sort((a, b) => b.value - a.value)
+            .forEach((p) => { s += `${p.marker} ${p.seriesName}　<b>${r1(p.value)}</b><br/>`; });
+          return s + eventTipHTML(evs, y);
+        },
+      }),
+      legend: legendCfg(),
+      xAxis: axis({
+        type: 'category', data: ys.map(String),
+        axisLabel: {
+          color: '#8b95a3', fontSize: 11, fontFamily: FONT,
+          interval: view.tick === '1y' ? 0 : (view.tick === '3y' ? 2 : 4),
+        },
+      }),
+      yAxis: axis({ type: 'value', min: 20, max: 80 }),
+      series: allSeries,
+    });
+    const n = el('noteOverall');
+    if (n) {
+      n.innerHTML = `当前评分口径：<b>${MODE_CN[mode]}</b>；时间范围 ${view.start}–${view.end
+      }。`;
+    }
+  }
 
-/* ============================================================
+  /* ============================================================
    01b GDP 对比（三种口径）
    ============================================================ */
-var gdpMode = "NY.GDP.MKTP.CD";
-function renderGDP(){
-  var host = el("cGDP");
-  if(!host) return;
-  var blk = (DATA.gdp || {})[gdpMode];
-  if(!blk){
-    draw("cGDP", { title:{ text:"（无 GDP 数据）", left:"center", top:"middle",
-      textStyle:{ color:"#8b95a3", fontSize:13, fontFamily:FONT, fontWeight:"normal" } } });
-    return;
+  let gdpMode = 'NY.GDP.MKTP.CD';
+  function renderGDP() {
+    const host = el('cGDP');
+    if (!host) return;
+    const blk = (DATA.gdp || {})[gdpMode];
+    if (!blk) {
+      draw('cGDP', {
+        title: {
+          text: '（无 GDP 数据）', left: 'center', top: 'middle',
+          textStyle: { color: '#8b95a3', fontSize: 13, fontFamily: FONT, fontWeight: 'normal' },
+        },
+      });
+      return;
+    }
+    const ys = yearsInView().filter((y) => y >= 1960);
+    const evs = ((DATA.events && DATA.events.headline) || []).filter((e) => {
+      if (e.rng) return false;
+      return e.year <= view.end && e.year >= view.start && e.year >= 1960;
+    });
+    const EM = showEvents ? buildEventMarks(evs, false) : { lines: [], areas: [] };
+    const isLog = blk.axis === 'log';
+    const fmtV = function (v) {
+      if (v === null || v === undefined) return '—';
+      if (Math.abs(v) >= 1e12) return `${(v / 1e12).toFixed(1)} 万亿`;
+      if (Math.abs(v) >= 1e8) return `${(v / 1e8).toFixed(0)} 亿`;
+      return v.toLocaleString();
+    };
+    draw('cGDP', {
+      grid: baseGrid(),
+      tooltip: tip({
+        formatter(ps) {
+          const y = parseInt(ps[0].axisValue, 10);
+          let s = `<b>${y} 年</b>　<span style='color:#8b95a3'>${blk.label}</span><br/>`;
+          ps.filter((p) => p.seriesName !== '__ev' && p.value !== null
+                               && p.value !== undefined)
+            .sort((a, b) => b.value - a.value)
+            .forEach((p) => { s += `${p.marker} ${p.seriesName}　<b>${fmtV(p.value)}</b><br/>`; });
+          return s + eventTipHTML(evs, y);
+        },
+      }),
+      legend: legendCfg(),
+      xAxis: axis({
+        type: 'category', data: ys.map(String),
+        axisLabel: {
+          color: '#8b95a3', fontSize: 11, fontFamily: FONT,
+          interval: view.tick === '1y' ? 0 : (view.tick === '3y' ? 3 : 5),
+        },
+      }),
+      yAxis: axis({
+        type: isLog ? 'log' : 'value',
+        axisLabel: {
+          color: '#8b95a3', fontSize: 10.5, fontFamily: FONT,
+          formatter(v) {
+            if (!isLog) return v >= 1000 ? `${v / 1000}k` : v;
+            if (v >= 1e12) return `${v / 1e12}万亿`;
+            if (v >= 1e8) return `${v / 1e8}亿`;
+            return v;
+          },
+        },
+      }),
+      series: ENT.map((e) => e.iso)
+        .filter((iso) => pick(blk.values, iso, ys).some((v) => v))
+        .map((iso) => {
+          const e = BY[iso];
+          const isCN = iso === 'CHN';
+          return {
+            name: e.cn, type: 'line', data: pick(blk.values, iso, ys),
+            symbol: 'circle', symbolSize: isCN ? 5 : 3, showSymbol: false, // 默认不画点，悬停时由 ECharts 显示
+            connectNulls: true, z: isCN ? 10 : 3,
+            lineStyle: { width: isCN ? 3 : 1.8, color: e.color, opacity: iso === 'TWN' ? 0.85 : 1 },
+            itemStyle: { color: e.color },
+            labelLayout: { hideOverlap: true },
+            endLabel: {
+              show: iso === 'CHN', formatter: '{a}', color: e.color, fontSize: 11.5,
+              fontWeight: 'bold', fontFamily: FONT, distance: 8,
+            },
+          };
+        })
+        .concat([{
+          name: '__ev', type: 'line', data: [], silent: true, z: 1,
+          markLine: { silent: true, symbol: 'none', data: EM.lines },
+          markArea: { silent: true, data: EM.areas },
+        }]),
+    });
   }
-  var ys = yearsInView().filter(function(y){ return y >= 1960; });
-  var evs = ((DATA.events && DATA.events.headline) || []).filter(function(e){
-    if(e.rng) return false;
-    return e.year <= view.end && e.year >= view.start && e.year >= 1960;
-  });
-  var EM = showEvents ? buildEventMarks(evs, false) : { lines:[], areas:[] };
-  var isLog = blk.axis === "log";
-  var fmtV = function(v){
-    if(v === null || v === undefined) return "—";
-    if(Math.abs(v) >= 1e12) return (v/1e12).toFixed(1)+" 万亿";
-    if(Math.abs(v) >= 1e8)  return (v/1e8).toFixed(0)+" 亿";
-    return v.toLocaleString();
-  };
-  draw("cGDP", {
-    grid: baseGrid(),
-    tooltip: tip({ formatter:function(ps){
-      var y = parseInt(ps[0].axisValue, 10);
-      var s = "<b>"+y+" 年</b>　<span style='color:#8b95a3'>"+blk.label+"</span><br/>";
-      ps.filter(function(p){ return p.seriesName!=="__ev" && p.value!==null
-                               && p.value!==undefined; })
-        .sort(function(a,b){ return b.value - a.value; })
-        .forEach(function(p){ s += p.marker+" "+p.seriesName+"　<b>"+fmtV(p.value)+"</b><br/>"; });
-      return s + eventTipHTML(evs, y);
-    }}),
-    legend: legendCfg(),
-    xAxis: axis({ type:"category", data: ys.map(String),
-      axisLabel:{ color:"#8b95a3", fontSize:11, fontFamily:FONT,
-        interval: view.tick==="1y"?0:(view.tick==="3y"?3:5) } }),
-    yAxis: axis({ type: isLog ? "log" : "value",
-      axisLabel:{ color:"#8b95a3", fontSize:10.5, fontFamily:FONT,
-        formatter: function(v){
-          if(!isLog) return v >= 1000 ? (v/1000)+"k" : v;
-          if(v >= 1e12) return (v/1e12)+"万亿";
-          if(v >= 1e8)  return (v/1e8)+"亿";
-          return v;
-        } } }),
-    series: ENT.map(function(e){ return e.iso; })
-      .filter(function(iso){ return pick(blk.values, iso, ys).some(function(v){ return v; }); })
-      .map(function(iso){
-        var e = BY[iso], isCN = iso === "CHN";
-        return { name:e.cn, type:"line", data: pick(blk.values, iso, ys),
-          symbol:"circle", symbolSize: isCN?5:3, showSymbol: false,   // 默认不画点，悬停时由 ECharts 显示
-          connectNulls:true, z: isCN?10:3,
-          lineStyle:{ width: isCN?3:1.8, color:e.color, opacity: iso==="TWN"?0.85:1 },
-          itemStyle:{ color:e.color },
-          labelLayout:{hideOverlap:true},
-          endLabel:{ show: iso==="CHN", formatter:"{a}", color:e.color, fontSize:11.5,
-            fontWeight:"bold", fontFamily:FONT, distance:8 } };
-      })
-      .concat([{ name:"__ev", type:"line", data:[], silent:true, z:1,
-        markLine:{ silent:true, symbol:"none", data: EM.lines },
-        markArea:{ silent:true, data: EM.areas } }])
-  });
-}
 
-/* ============================================================
+  /* ============================================================
    01b 排名变迁
    ============================================================ */
-function renderBump(){
-  var ys = yearsInView();
-  var blk = DATA.overall[mode];
-  var ranks = {}; ISO.forEach(function(iso){ ranks[iso]=[]; });
-  ys.forEach(function(y){
-    var vals = MAIN.map(function(iso){ return {iso:iso, v: nth(blk,iso)? blk[iso][YIDX[y]] : null}; })
-      .filter(function(o){ return o.v!==null && o.v!==undefined; });
-    vals.sort(function(a,b){ return b.v-a.v; });
-    var rk = {}; vals.forEach(function(o,i){ rk[o.iso]=i+1; });
-    ISO.forEach(function(iso){ ranks[iso].push(rk[iso]||null); });
-  });
-  var shown = MAIN.filter(function(iso){ return bumpPicked[iso]; });
-  var maxR = Math.max(10, MAIN.length);
-  // 每年都画点会在名次长期不变处形成一横排密点，毫无信息量。
-  // 故折线本身不画点，另用散点系列只在**名次发生变化**的年份标记。
-  var series = [];
-  shown.forEach(function(iso){
-    var e = BY[iso], isCN = iso==="CHN";
-    series.push(
-      { name:e.cn, type:"line", data:ranks[iso], showSymbol:false, smooth:false,
-        lineStyle:{width:isCN?3.5:1.8,color:e.color,opacity:isCN?1:.72},
-        itemStyle:{color:e.color}, connectNulls:true, z:isCN?10:3,
-        endLabel:{show:true, formatter:"{a}", color:e.color, fontSize:11,
-          fontWeight:isCN?"bold":"normal", fontFamily:FONT, distance:8} });
-    // 变化点：首年、末年，以及名次与上一年不同的年份
-    var pts = [];
-    ranks[iso].forEach(function(v, k){
-      if(v === null || v === undefined) return;
-      var prev = k > 0 ? ranks[iso][k-1] : null;
-      var isEdge = (k === 0) || (k === ranks[iso].length - 1);
-      if(isEdge || prev === null || prev === undefined || v !== prev){
-        pts.push([String(ys[k]), v]);
-      }
+  function renderBump() {
+    const ys = yearsInView();
+    const blk = DATA.overall[mode];
+    const ranks = {}; ISO.forEach((iso) => { ranks[iso] = []; });
+    ys.forEach((y) => {
+      const vals = MAIN.map((iso) => ({ iso, v: nth(blk, iso) ? blk[iso][YIDX[y]] : null }))
+        .filter((o) => o.v !== null && o.v !== undefined);
+      vals.sort((a, b) => b.v - a.v);
+      const rk = {}; vals.forEach((o, i) => { rk[o.iso] = i + 1; });
+      ISO.forEach((iso) => { ranks[iso].push(rk[iso] || null); });
     });
-    series.push(
-      { name:e.cn + " · 名次变动", type:"scatter", data:pts, symbol:"circle",
-        symbolSize: isCN ? 8 : 6, z: isCN ? 11 : 4,
-        itemStyle:{ color:e.color, borderColor:"#fff", borderWidth:1 },
-        tooltip:{ show:false } });
-  });
-  draw("cBump", {
-    grid: baseGrid(), tooltip: tip({ trigger:"axis", formatter:function(ps){
-      var s="<b>"+ps[0].axisValue+" 年</b><br/>";
-      // 散点系列与折线同名同值，需排除以免每行重复两次
-      ps.filter(function(p){ return p.value!==null && p.seriesType!=="scatter"; })
-        .sort(function(a,b){ return a.value - b.value; })
-        .forEach(function(p){ s+=p.marker+" "+p.seriesName+"　第 <b>"+p.value+"</b> 名<br/>"; });
-      return s; }}),
-    legend: Object.assign(legendCfg(), {
-      data: shown.map(function(iso){ return BY[iso].cn; })   // 图例只列折线，不列散点
-    }),
-    xAxis: axis({type:"category", data:ys.map(String),
-      axisLabel:{color:"#8b95a3",fontSize:11,fontFamily:FONT,
-        interval: view.tick==="1y"?0:(view.tick==="3y"?2:4)}}),
-    yAxis: axis({type:"value", inverse:true, min:1, max:maxR,
-      name:"名次", nameTextStyle:{color:"#8b95a3",fontSize:11,fontFamily:FONT},
-      axisLabel:{color:"#8b95a3",fontSize:11,fontFamily:FONT,
-        formatter:function(v){ return Number.isInteger(v)?"第"+v:""; }},
-      splitLine:{lineStyle:{color:"#f0f3f6"}}}),
-    series: series
-  });
-}
+    const shown = MAIN.filter((iso) => bumpPicked[iso]);
+    const maxR = Math.max(10, MAIN.length);
+    // 每年都画点会在名次长期不变处形成一横排密点，毫无信息量。
+    // 故折线本身不画点，另用散点系列只在**名次发生变化**的年份标记。
+    const series = [];
+    shown.forEach((iso) => {
+      const e = BY[iso];
+      const isCN = iso === 'CHN';
+      series.push(
+        {
+          name: e.cn, type: 'line', data: ranks[iso], showSymbol: false, smooth: false,
+          lineStyle: { width: isCN ? 3.5 : 1.8, color: e.color, opacity: isCN ? 1 : 0.72 },
+          itemStyle: { color: e.color }, connectNulls: true, z: isCN ? 10 : 3,
+          endLabel: {
+            show: true, formatter: '{a}', color: e.color, fontSize: 11,
+            fontWeight: isCN ? 'bold' : 'normal', fontFamily: FONT, distance: 8,
+          },
+        },
+      );
+      // 变化点：首年、末年，以及名次与上一年不同的年份
+      const pts = [];
+      ranks[iso].forEach((v, k) => {
+        if (v === null || v === undefined) return;
+        const prev = k > 0 ? ranks[iso][k - 1] : null;
+        const isEdge = (k === 0) || (k === ranks[iso].length - 1);
+        if (isEdge || prev === null || prev === undefined || v !== prev) {
+          pts.push([String(ys[k]), v]);
+        }
+      });
+      series.push(
+        {
+          name: `${e.cn} · 名次变动`, type: 'scatter', data: pts, symbol: 'circle',
+          symbolSize: isCN ? 8 : 6, z: isCN ? 11 : 4,
+          itemStyle: { color: e.color, borderColor: '#fff', borderWidth: 1 },
+          tooltip: { show: false },
+        },
+      );
+    });
+    draw('cBump', {
+      grid: baseGrid(), tooltip: tip({
+        trigger: 'axis', formatter(ps) {
+          let s = `<b>${ps[0].axisValue} 年</b><br/>`;
+          // 散点系列与折线同名同值，需排除以免每行重复两次
+          ps.filter((p) => p.value !== null && p.seriesType !== 'scatter')
+            .sort((a, b) => a.value - b.value)
+            .forEach((p) => { s += `${p.marker} ${p.seriesName}　第 <b>${p.value}</b> 名<br/>`; });
+          return s;
+        },
+      }),
 
-/* ============================================================
+      // 图例只列折线，不列散点
+      legend: Object.assign(legendCfg(), { data: shown.map((iso) => BY[iso].cn) }),
+      xAxis: axis({
+        type: 'category', data: ys.map(String),
+        axisLabel: {
+          color: '#8b95a3', fontSize: 11, fontFamily: FONT,
+          interval: view.tick === '1y' ? 0 : (view.tick === '3y' ? 2 : 4),
+        },
+      }),
+      yAxis: axis({
+        type: 'value', inverse: true, min: 1, max: maxR,
+        name: '名次', nameTextStyle: { color: '#8b95a3', fontSize: 11, fontFamily: FONT },
+        axisLabel: {
+          color: '#8b95a3', fontSize: 11, fontFamily: FONT,
+          formatter(v) { return Number.isInteger(v) ? `第${v}` : ''; },
+        },
+        splitLine: { lineStyle: { color: '#f0f3f6' } },
+      }),
+      series,
+    });
+  }
+
+  /* ============================================================
    01c 数据年排序条形图
    ============================================================ */
-function renderBar(){
-  var y = DE;   // 数据年，非面板末年
-  var rows = MAIN.concat(["TWN"]).map(function(iso){
-    var v = nth(DATA.overall[mode],iso) ? DATA.overall[mode][iso][YIDX[y]] : null;
-    var nd = nth(DATA.overall_ndom,iso) ? DATA.overall_ndom[iso][YIDX[y]] : null;
-    return {iso:iso, v:v, nd:nd};
-  }).filter(function(o){ return o.v!==null; })
-    .sort(function(a,b){ return a.v-b.v; });
+  function renderBar() {
+    const y = DE; // 数据年，非面板末年
+    const rows = MAIN.concat(['TWN']).map((iso) => {
+      const v = nth(DATA.overall[mode], iso) ? DATA.overall[mode][iso][YIDX[y]] : null;
+      const nd = nth(DATA.overall_ndom, iso) ? DATA.overall_ndom[iso][YIDX[y]] : null;
+      return { iso, v, nd };
+    }).filter((o) => o.v !== null)
+      .sort((a, b) => a.v - b.v);
 
-  draw("cBar", {
-    grid:{left:60,right:80,top:16,bottom:24,containLabel:true},
-    tooltip: tip({ trigger:"item", formatter:function(p){
-      var o = rows[p.dataIndex];
-      return "<b>"+BY[o.iso].cn+"</b><br/>综合评分 <b>"+r1(o.v)+"</b><br/>支撑领域数 "+o.nd+"/12";
-    }}),
-    xAxis: axis({type:"value", max:80}),
-    yAxis: axis({type:"category", data: rows.map(function(o){ return BY[o.iso].cn; }),
-      axisLabel:{color:"#5a6472",fontSize:12,fontFamily:FONT}}),
-    series:[{
-      type:"bar", data: rows.map(function(o){
-        return { value:r1(o.v), itemStyle:{ color: o.iso==="CHN"?"#c8102e":BY[o.iso].color,
-          opacity: o.nd<8?0.45:0.9, borderRadius:[0,4,4,0] } };
+    draw('cBar', {
+      grid: { left: 60, right: 80, top: 16, bottom: 24, containLabel: true },
+      tooltip: tip({
+        trigger: 'item', formatter(p) {
+          const o = rows[p.dataIndex];
+          return `<b>${BY[o.iso].cn}</b><br/>综合评分 <b>${r1(o.v)}</b><br/>支撑领域数 ${o.nd}/12`;
+        },
       }),
-      barWidth:"62%",
-      label:{show:true, position:"right", color:"#5a6472", fontSize:11.5, fontFamily:FONT,
-        formatter:function(p){ var o=rows[p.dataIndex];
-          return r1(o.v)+"（"+o.nd+"领域）"; }}
-    }]
-  });
-}
+      xAxis: axis({ type: 'value', max: 80 }),
+      yAxis: axis({
+        type: 'category', data: rows.map((o) => BY[o.iso].cn),
+        axisLabel: { color: '#5a6472', fontSize: 12, fontFamily: FONT },
+      }),
+      series: [{
+        type: 'bar', data: rows.map((o) => ({
+          value: r1(o.v), itemStyle: {
+            color: o.iso === 'CHN' ? '#c8102e' : BY[o.iso].color,
+            opacity: o.nd < 8 ? 0.45 : 0.9, borderRadius: [0, 4, 4, 0],
+          },
+        })),
+        barWidth: '62%',
+        label: {
+          show: true, position: 'right', color: '#5a6472', fontSize: 11.5, fontFamily: FONT,
+          formatter(p) {
+            const o = rows[p.dataIndex];
+            return `${r1(o.v)}（${o.nd}领域）`;
+          },
+        },
+      }],
+    });
+  }
 
-/* ============================================================
+  /* ============================================================
    01d 五大类
    ============================================================ */
-function renderCat(){
-  var y = DE;   // 数据年，非面板末年
-  var isos = MAIN.concat(["TWN"]);
-  draw("cCat", {
-    grid:{left:40,right:20,top:44,bottom:24,containLabel:true},
-    tooltip: tip({ trigger:"axis", axisPointer:{type:"shadow"} }),
-    legend:{ top:0, itemWidth:12, itemHeight:9, textStyle:{color:"#5a6472",fontSize:11,fontFamily:FONT} },
-    xAxis: axis({type:"category",
-      data: CATS.map(function(c){ return c.length>8? c.slice(0,8)+"…":c; }),
-      axisLabel:{color:"#8b95a3",fontSize:10.5,fontFamily:FONT,interval:0,
-        rotate: 22}}),
-    yAxis: axis({type:"value", max:100}),
-    series: isos.map(function(iso){
-      var e = BY[iso];
-      return { name:e.cn, type:"bar", data: CATS.map(function(c){
-          var v = nth(DATA.category[c],iso) ? DATA.category[c][iso][YIDX[y]] : null;
-          return v===null?null:r1(v);
-        }),
-        itemStyle:{ color:e.color, opacity: iso==="CHN"?1: (iso==="TWN"?0.8:0.72),
-          borderRadius:[3,3,0,0] },
-        barGap:"10%" };
-    })
-  });
-}
+  function renderCat() {
+    const y = DE; // 数据年，非面板末年
+    const isos = MAIN.concat(['TWN']);
+    draw('cCat', {
+      grid: { left: 40, right: 20, top: 44, bottom: 24, containLabel: true },
+      tooltip: tip({ trigger: 'axis', axisPointer: { type: 'shadow' } }),
+      legend: { top: 0, itemWidth: 12, itemHeight: 9, textStyle: { color: '#5a6472', fontSize: 11, fontFamily: FONT } },
+      xAxis: axis({
+        type: 'category',
+        data: CATS.map((c) => (c.length > 8 ? `${c.slice(0, 8)}…` : c)),
+        axisLabel: {
+          color: '#8b95a3', fontSize: 10.5, fontFamily: FONT, interval: 0,
+          rotate: 22,
+        },
+      }),
+      yAxis: axis({ type: 'value', max: 100 }),
+      series: isos.map((iso) => {
+        const e = BY[iso];
+        return {
+          name: e.cn, type: 'bar', data: CATS.map((c) => {
+            const v = nth(DATA.category[c], iso) ? DATA.category[c][iso][YIDX[y]] : null;
+            return v === null ? null : r1(v);
+          }),
+          itemStyle: {
+            color: e.color, opacity: iso === 'CHN' ? 1 : (iso === 'TWN' ? 0.8 : 0.72),
+            borderRadius: [3, 3, 0, 0],
+          },
+          barGap: '10%',
+        };
+      }),
+    });
+  }
 
-/* ============================================================
+  /* ============================================================
    01e 可信度
    ============================================================ */
-function renderCoverage(){
-  var ys = yearsInView();
-  var show = ["CHN","USA","DEU","IND","RUS","TWN"];
-  draw("cCoverage", {
-    grid: gridWithAxisName(), tooltip: tip({ formatter:function(ps){
-      var s="<b>"+ps[0].axisValue+" 年</b>　实测值占比<br/>";
-      ps.forEach(function(p){ if(p.value!==null)
-        s += p.marker+" "+p.seriesName+"　<b>"+Math.round(p.value*100)+"%</b><br/>"; });
-      return s; }}),
-    legend:{top:0,left:0,itemWidth:14,itemHeight:9,
-      textStyle:{color:"#5a6472",fontSize:12,fontFamily:FONT},
-      data: show.map(function(i){return BY[i].cn;})},
-    xAxis: axis({type:"category", data:ys.map(String),
-      axisLabel:{color:"#8b95a3",fontSize:11,fontFamily:FONT,
-        interval: view.tick==="1y"?0:(view.tick==="3y"?2:4)}}),
-    yAxis: axis({type:"value", min:0, max:1, name:"实测占比",
-      nameTextStyle:{color:"#8b95a3",fontSize:11,fontFamily:FONT},
-      axisLabel:{color:"#8b95a3",fontSize:11,fontFamily:FONT,
-        formatter:function(v){return Math.round(v*100)+"%";}}}),
-    series: show.map(function(iso){
-      var e = BY[iso];
-      return { name:e.cn, type:"line", data: pick(DATA.coverage, iso, ys),
-        step:"end", symbol:"none", lineStyle:{width: iso==="CHN"?3:1.8, color:e.color},
-        itemStyle:{color:e.color}, areaStyle: iso==="CHN"?{opacity:.08,color:e.color}:undefined,
-        z: iso==="CHN"?10:3, connectNulls:true,
-        markArea: iso==="CHN"?{silent:true, itemStyle:{color:"rgba(200,16,46,.05)"},
-          data:[[{xAxis:String(DE+1)},{xAxis:String(view.end)}]]}:undefined };
-    })
-  });
-}
+  function renderCoverage() {
+    const ys = yearsInView();
+    const show = ['CHN', 'USA', 'DEU', 'IND', 'RUS', 'TWN'];
+    draw('cCoverage', {
+      grid: gridWithAxisName(), tooltip: tip({
+        formatter(ps) {
+          let s = `<b>${ps[0].axisValue} 年</b>　实测值占比<br/>`;
+          ps.forEach((p) => {
+            if (p.value !== null) s += `${p.marker} ${p.seriesName}　<b>${Math.round(p.value * 100)}%</b><br/>`;
+          });
+          return s;
+        },
+      }),
+      legend: {
+        top: 0, left: 0, itemWidth: 14, itemHeight: 9,
+        textStyle: { color: '#5a6472', fontSize: 12, fontFamily: FONT },
+        data: show.map((i) => BY[i].cn),
+      },
+      xAxis: axis({
+        type: 'category', data: ys.map(String),
+        axisLabel: {
+          color: '#8b95a3', fontSize: 11, fontFamily: FONT,
+          interval: view.tick === '1y' ? 0 : (view.tick === '3y' ? 2 : 4),
+        },
+      }),
+      yAxis: axis({
+        type: 'value', min: 0, max: 1, name: '实测占比',
+        nameTextStyle: { color: '#8b95a3', fontSize: 11, fontFamily: FONT },
+        axisLabel: {
+          color: '#8b95a3', fontSize: 11, fontFamily: FONT,
+          formatter(v) { return `${Math.round(v * 100)}%`; },
+        },
+      }),
+      series: show.map((iso) => {
+        const e = BY[iso];
+        return {
+          name: e.cn, type: 'line', data: pick(DATA.coverage, iso, ys),
+          step: 'end', symbol: 'none', lineStyle: { width: iso === 'CHN' ? 3 : 1.8, color: e.color },
+          itemStyle: { color: e.color }, areaStyle: iso === 'CHN' ? { opacity: 0.08, color: e.color } : undefined,
+          z: iso === 'CHN' ? 10 : 3, connectNulls: true,
+          markArea: iso === 'CHN' ? {
+            silent: true, itemStyle: { color: 'rgba(200,16,46,.05)' },
+            data: [[{ xAxis: String(DE + 1) }, { xAxis: String(view.end) }]],
+          } : undefined,
+        };
+      }),
+    });
+  }
 
-/* ============================================================
+  /* ============================================================
    04b 两岸 GDP 对比
    与其他 GDP 图保持一致的交互（可切换口径），但因为台湾地区不在世行/IMF 数据中，
    名义美元口径无法成立——只能做 PPP 口径下的三个视图。
    ============================================================ */
-// 四个独立视图，各自**单一方向、单一纵轴**。
-// 上一版把「人均倍数（台/陆）」与「总量倍数（陆/台）」画在一张双轴图上——
-// 两个比值方向相反（一个越大越好、一个越小越好），读者要来回换算，不直观。
-// 现按用户建议拆开：每次只看一个倍数，方向由标题明确写出。
-var csMode = "total";
-var CS_MODES = {
-  total:      { label:"GDP 总量",   unit:"万亿 2011 国际元", kind:"level" },
-  pc:         { label:"人均 GDP",   unit:"2011 国际元",      kind:"level" },
-  totalRatio: { label:"总量倍数",   unit:"倍（中国大陆÷台湾地区）",   kind:"ratio" },
-  pcRatio:    { label:"人均倍数",   unit:"倍（台湾地区÷中国大陆）",   kind:"ratio" }
-};
-function renderCrossStrait(){
-  var host = el("cCross");
-  if(!host) return;
-  var C = DATA.crossstrait;
-  if(!C){
-    draw("cCross", { title:{ text:"（无两岸对比数据）", left:"center", top:"middle",
-      textStyle:{ color:"#8b95a3", fontSize:13, fontFamily:FONT, fontWeight:"normal" } } });
-    return;
-  }
-  var ys = C.years.map(String);
-  var m = CS_MODES[csMode];
-  var CHN_C = "#c8102e", TWN_C = "#0b6b8f";
-  var series, yName;
-
-  if(m.kind === "ratio"){
-    var isPCR = csMode === "pcRatio";
-    var dat = isPCR ? C.pc_ratio : C.total_ratio;
-    var col = isPCR ? CHN_C : TWN_C;
-    var nm  = isPCR ? "人均倍数（台湾地区÷中国大陆）" : "总量倍数（中国大陆÷台湾地区）";
-    yName = m.unit;
-    var lo = Math.min.apply(null, dat), hi2 = Math.max.apply(null, dat);
-    series = [
-      { name:nm, type:"line", data: dat, smooth:true, showSymbol:false,
-        lineStyle:{ width:3.4, color:col }, itemStyle:{ color:col }, z:10,
-        areaStyle:{ color: isPCR ? "rgba(200,16,46,.07)" : "rgba(11,107,143,.07)" },
-        markLine:{ silent:true, symbol:"none",
-          lineStyle:{ color:col, type:"dashed", width:1, opacity:0.5 },
-          label:{ show:true, formatter:"峰值 "+hi2.toFixed(1)+"×",
-                  color:col, fontSize:10, fontFamily:FONT, position:"insideEndTop" },
-          data:[{ yAxis: hi2 }] },
-        markPoint:{ silent:true, symbol:"pin", symbolSize:34,
-          itemStyle:{ color:col },
-          label:{ color:"#fff", fontSize:10, fontFamily:FONT },
-          data:[{ type:"min", name:"谷值", formatter:function(p){ return p.value.toFixed(1)+"×"; } }] },
-        endLabel:{ show:true, formatter:function(p){ return p.value.toFixed(1)+"×"; },
-                   color:col, fontSize:11.5, fontWeight:"bold", fontFamily:FONT, distance:6 } }
-    ];
-  } else {
-    var isT = csMode === "total";
-    yName = m.unit;
-    var f = isT ? function(v){ return v / 1e12; } : function(v){ return v; };
-    series = [
-      { name:"中国大陆", type:"line", data: C[isT ? "total_chn" : "pc_chn"].map(f),
-        smooth:true, showSymbol:false, lineStyle:{ width:3.2, color:CHN_C },
-        itemStyle:{ color:CHN_C }, z:10,
-        endLabel:{ show:true, formatter:"中国大陆", color:CHN_C, fontSize:11.5,
-                   fontWeight:"bold", fontFamily:FONT, distance:6 } },
-      { name:"台湾地区", type:"line", data: C[isT ? "total_twn" : "pc_twn"].map(f),
-        smooth:true, showSymbol:false, lineStyle:{ width:3.2, color:TWN_C },
-        itemStyle:{ color:TWN_C },
-        endLabel:{ show:true, formatter:"台湾地区", color:TWN_C, fontSize:11.5,
-                   fontWeight:"bold", fontFamily:FONT, distance:6 } }
-    ];
-  }
-
-  var opt = {
-    grid:{ left:70, right:78, top:52, bottom:56, containLabel:true },
-    tooltip: tip({ trigger:"axis", formatter:function(ps){
-      var i = ps[0].dataIndex, y = C.years[i];
-      if(m.kind === "ratio"){
-        var isPCR2 = csMode === "pcRatio";
-        var d2 = isPCR2 ? C.pc_ratio[i] : C.total_ratio[i];
-        return "<b>"+y+" 年</b><br/>"
-          + (isPCR2 ? "人均 GDP：台湾地区为中国大陆的 <b>" : "GDP 总量：中国大陆为台湾地区的 <b>")
-          + d2.toFixed(2) + " 倍</b><br/>"
-          + "中国大陆人均 "+Math.round(C.pc_chn[i]).toLocaleString()
-          + " ｜ 台湾地区人均 "+Math.round(C.pc_twn[i]).toLocaleString()+"<br/>"
-          + '<span style="color:#8b95a3">' + C.unit + "（2011 年国际元，PPP）</span>";
-      }
-      var isT = csMode === "total";
-      var a = isT ? C.total_chn[i] : C.pc_chn[i];
-      var b = isT ? C.total_twn[i] : C.pc_twn[i];
-      var fm = function(v){ return isT ? (v/1e12).toFixed(2)+" 万亿" : Math.round(v).toLocaleString(); };
-      return "<b>"+y+" 年</b>　<span style='color:#8b95a3'>"+m.label+"</span><br/>"
-        + "中国大陆　<b>"+fm(a)+"</b><br/>台湾地区　<b>"+fm(b)+"</b><br/>"
-        + "台湾地区为中国大陆的 <b>"+(b/a*100).toFixed(1)+"%</b><br/>"
-        + '<span style="color:#8b95a3">' + C.unit + "</span>";
-    }}),
-    legend: legendCfg(),
-    xAxis: axis({ type:"category", data: ys,
-      axisLabel:{ color:"#8b95a3", fontSize:10.5, fontFamily:FONT, interval:4 } }),
-    yAxis: m.kind === "ratio"
-      ? [ axis({ type:"value", name:yName,
-          nameTextStyle:{ color:"#5a6472", fontSize:11, fontFamily:FONT },
-          axisLabel:{ color:"#5a6472", fontSize:10.5, fontFamily:FONT,
-                      formatter:function(v){ return v + "×"; } } }) ]
-      : [ axis({ type:"value", name:yName,
-          nameTextStyle:{ color:"#8b95a3", fontSize:11, fontFamily:FONT },
-          axisLabel:{ color:"#8b95a3", fontSize:10.5, fontFamily:FONT,
-            formatter:function(v){
-              if(csMode === "total") return v >= 1 ? v + "万亿" : (v*1000).toFixed(0)+"亿";
-              return v >= 1000 ? (v/1000).toFixed(0)+"k" : v; } } }) ],
-    series: series
+  // 四个独立视图，各自**单一方向、单一纵轴**。
+  // 上一版把「人均倍数（台/陆）」与「总量倍数（陆/台）」画在一张双轴图上——
+  // 两个比值方向相反（一个越大越好、一个越小越好），读者要来回换算，不直观。
+  // 现按用户建议拆开：每次只看一个倍数，方向由标题明确写出。
+  let csMode = 'total';
+  const CS_MODES = {
+    total: { label: 'GDP 总量', unit: '万亿 2011 国际元', kind: 'level' },
+    pc: { label: '人均 GDP', unit: '2011 国际元', kind: 'level' },
+    totalRatio: { label: '总量倍数', unit: '倍（中国大陆÷台湾地区）', kind: 'ratio' },
+    pcRatio: { label: '人均倍数', unit: '倍（台湾地区÷中国大陆）', kind: 'ratio' },
   };
-  draw("cCross", opt);
+  function renderCrossStrait() {
+    const host = el('cCross');
+    if (!host) return;
+    const C = DATA.crossstrait;
+    if (!C) {
+      draw('cCross', {
+        title: {
+          text: '（无两岸对比数据）', left: 'center', top: 'middle',
+          textStyle: { color: '#8b95a3', fontSize: 13, fontFamily: FONT, fontWeight: 'normal' },
+        },
+      });
+      return;
+    }
+    const ys = C.years.map(String);
+    const m = CS_MODES[csMode];
+    const CHN_C = '#c8102e';
+    const TWN_C = '#0b6b8f';
+    let series;
+    let yName;
 
-  // 下方只留极简脚注——口径说明已统一放在图表上方，避免两处重复
-  var n = el("crossNote");
-  if(n) n.textContent = "共 " + C.years.length + " 个年度（" + C.years[0] + "–"
-    + C.years[C.years.length-1] + "）。";
-}
+    if (m.kind === 'ratio') {
+      const isPCR = csMode === 'pcRatio';
+      const dat = isPCR ? C.pc_ratio : C.total_ratio;
+      const col = isPCR ? CHN_C : TWN_C;
+      const nm = isPCR ? '人均倍数（台湾地区÷中国大陆）' : '总量倍数（中国大陆÷台湾地区）';
+      yName = m.unit;
+      const hi2 = Math.max.apply(null, dat);
+      series = [
+        {
+          name: nm, type: 'line', data: dat, smooth: true, showSymbol: false,
+          lineStyle: { width: 3.4, color: col }, itemStyle: { color: col }, z: 10,
+          areaStyle: { color: isPCR ? 'rgba(200,16,46,.07)' : 'rgba(11,107,143,.07)' },
+          markLine: {
+            silent: true, symbol: 'none',
+            lineStyle: { color: col, type: 'dashed', width: 1, opacity: 0.5 },
+            label: {
+              show: true, formatter: `峰值 ${hi2.toFixed(1)}×`,
+              color: col, fontSize: 10, fontFamily: FONT, position: 'insideEndTop',
+            },
+            data: [{ yAxis: hi2 }],
+          },
+          markPoint: {
+            silent: true, symbol: 'pin', symbolSize: 34,
+            itemStyle: { color: col },
+            label: { color: '#fff', fontSize: 10, fontFamily: FONT },
+            data: [{ type: 'min', name: '谷值', formatter(p) { return `${p.value.toFixed(1)}×`; } }],
+          },
+          endLabel: {
+            show: true, formatter(p) { return `${p.value.toFixed(1)}×`; },
+            color: col, fontSize: 11.5, fontWeight: 'bold', fontFamily: FONT, distance: 6,
+          },
+        },
+      ];
+    } else {
+      const isT = csMode === 'total';
+      yName = m.unit;
+      const f = isT ? function (v) { return v / 1e12; } : function (v) { return v; };
+      series = [
+        {
+          name: '中国大陆', type: 'line', data: C[isT ? 'total_chn' : 'pc_chn'].map(f),
+          smooth: true, showSymbol: false, lineStyle: { width: 3.2, color: CHN_C },
+          itemStyle: { color: CHN_C }, z: 10,
+          endLabel: {
+            show: true, formatter: '中国大陆', color: CHN_C, fontSize: 11.5,
+            fontWeight: 'bold', fontFamily: FONT, distance: 6,
+          },
+        },
+        {
+          name: '台湾地区', type: 'line', data: C[isT ? 'total_twn' : 'pc_twn'].map(f),
+          smooth: true, showSymbol: false, lineStyle: { width: 3.2, color: TWN_C },
+          itemStyle: { color: TWN_C },
+          endLabel: {
+            show: true, formatter: '台湾地区', color: TWN_C, fontSize: 11.5,
+            fontWeight: 'bold', fontFamily: FONT, distance: 6,
+          },
+        },
+      ];
+    }
 
-/* ============================================================
+    const opt = {
+      grid: { left: 70, right: 78, top: 52, bottom: 56, containLabel: true },
+      tooltip: tip({
+        trigger: 'axis', formatter(ps) {
+          const i = ps[0].dataIndex;
+          const y = C.years[i];
+          if (m.kind === 'ratio') {
+            const isPCR2 = csMode === 'pcRatio';
+            const d2 = isPCR2 ? C.pc_ratio[i] : C.total_ratio[i];
+            return `<b>${y} 年</b><br/>${
+              isPCR2 ? '人均 GDP：台湾地区为中国大陆的 <b>' : 'GDP 总量：中国大陆为台湾地区的 <b>'
+            }${d2.toFixed(2)} 倍</b><br/>`
+          + `中国大陆人均 ${Math.round(C.pc_chn[i]).toLocaleString()
+          } ｜ 台湾地区人均 ${Math.round(C.pc_twn[i]).toLocaleString()}<br/>`
+          + `<span style="color:#8b95a3">${C.unit}（2011 年国际元，PPP）</span>`;
+          }
+          const isT = csMode === 'total';
+          const a = isT ? C.total_chn[i] : C.pc_chn[i];
+          const b = isT ? C.total_twn[i] : C.pc_twn[i];
+          const fm = function (v) { return isT ? `${(v / 1e12).toFixed(2)} 万亿` : Math.round(v).toLocaleString(); };
+          return `<b>${y} 年</b>　<span style='color:#8b95a3'>${m.label}</span><br/>`
+        + `中国大陆　<b>${fm(a)}</b><br/>台湾地区　<b>${fm(b)}</b><br/>`
+        + `台湾地区为中国大陆的 <b>${(b / a * 100).toFixed(1)}%</b><br/>`
+        + `<span style="color:#8b95a3">${C.unit}</span>`;
+        },
+      }),
+      legend: legendCfg(),
+      xAxis: axis({
+        type: 'category', data: ys,
+        axisLabel: { color: '#8b95a3', fontSize: 10.5, fontFamily: FONT, interval: 4 },
+      }),
+      yAxis: m.kind === 'ratio'
+        ? [axis({
+          type: 'value', name: yName,
+          nameTextStyle: { color: '#5a6472', fontSize: 11, fontFamily: FONT },
+          axisLabel: {
+            color: '#5a6472', fontSize: 10.5, fontFamily: FONT,
+            formatter(v) { return `${v}×`; },
+          },
+        })]
+        : [axis({
+          type: 'value', name: yName,
+          nameTextStyle: { color: '#8b95a3', fontSize: 11, fontFamily: FONT },
+          axisLabel: {
+            color: '#8b95a3', fontSize: 10.5, fontFamily: FONT,
+            formatter(v) {
+              if (csMode === 'total') return v >= 1 ? `${v}万亿` : `${(v * 1000).toFixed(0)}亿`;
+              return v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v;
+            },
+          },
+        })],
+      series,
+    };
+    draw('cCross', opt);
+
+    // 下方只留极简脚注——口径说明已统一放在图表上方，避免两处重复
+    const n = el('crossNote');
+    if (n) {
+      n.textContent = `共 ${C.years.length} 个年度（${C.years[0]}–${
+        C.years[C.years.length - 1]}）。`;
+    }
+  }
+
+  /* ============================================================
    01d 排名变迁图的国家选择器
    ============================================================ */
-function renderBumpPicker(){
-  var d = el("bumpPick"); if(!d) return;
-  d.innerHTML = "";
-  var lbl = document.createElement("span");
-  lbl.style.cssText = "font-size:12.5px;color:#5a6472;margin-right:6px";
-  lbl.textContent = "显示国家：";
-  d.appendChild(lbl);
-  MAIN.forEach(function(iso){
-    var e = BY[iso];
-    var b = document.createElement("button");
-    b.className = "btn mini" + (bumpPicked[iso] ? " on" : "");
-    b.textContent = e.cn;
-    b.onclick = function(){
-      bumpPicked[iso] = !bumpPicked[iso];
-      // 至少保留一国，全关则无法成图
-      if(!MAIN.filter(function(k){ return bumpPicked[k]; }).length){
-        bumpPicked[iso] = true; return;
-      }
-      renderBumpPicker(); renderBump();
-    };
-    d.appendChild(b);
-  });
-  var hint = document.createElement("span");
-  hint.style.cssText = "font-size:11.5px;color:#a3adba;margin-left:10px";
-  hint.textContent = "默认 3 国；10 国全开时线条会互相遮挡";
-  d.appendChild(hint);
-}
+  function renderBumpPicker() {
+    const d = el('bumpPick'); if (!d) return;
+    d.innerHTML = '';
+    const lbl = document.createElement('span');
+    lbl.style.cssText = 'font-size:12.5px;color:#5a6472;margin-right:6px';
+    lbl.textContent = '显示国家：';
+    d.appendChild(lbl);
+    MAIN.forEach((iso) => {
+      const e = BY[iso];
+      const b = document.createElement('button');
+      b.className = `btn mini${bumpPicked[iso] ? ' on' : ''}`;
+      b.textContent = e.cn;
+      b.onclick = function () {
+        bumpPicked[iso] = !bumpPicked[iso];
+        // 至少保留一国，全关则无法成图
+        if (!MAIN.filter((k) => bumpPicked[k]).length) {
+          bumpPicked[iso] = true; return;
+        }
+        renderBumpPicker(); renderBump();
+      };
+      d.appendChild(b);
+    });
+    const hint = document.createElement('span');
+    hint.style.cssText = 'font-size:11.5px;color:#a3adba;margin-left:10px';
+    hint.textContent = '默认 3 国；10 国全开时线条会互相遮挡';
+    d.appendChild(hint);
+  }
 
-/* ============================================================
+  /* ============================================================
    02 雷达图
    ============================================================ */
-function renderRadarPicker(){
-  var d = el("radarPick"); if(!d) return;
-  d.innerHTML = "";
-  var lbl = document.createElement("span");
-  lbl.style.cssText = "font-size:12.5px;color:#5a6472;margin-right:6px";
-  lbl.textContent = "选择国家：";
-  d.appendChild(lbl);
-  ENT.forEach(function(e){
-    var b = document.createElement("button");
-    b.className = "btn mini" + (radarPicked[e.iso]?" on":"");
-    b.textContent = e.cn;
-    b.onclick = function(){
-      radarPicked[e.iso] = !radarPicked[e.iso];
-      if(!Object.keys(radarPicked).filter(function(k){return radarPicked[k];}).length){
-        radarPicked[e.iso]=true; return;
-      }
-      renderRadarPicker(); renderRadar();
-    };
-    d.appendChild(b);
-  });
-}
-function renderRadar(){
-  var y = DE;   // 数据年，非面板末年
-  var picked = ENT.filter(function(e){ return radarPicked[e.iso]; });
-  var ind = DOMS.map(function(d){
-    return { name: d.cn.length>7? d.cn.slice(0,7)+"…" : d.cn, max:100 };
-  });
-  draw("cRadar", {
-    tooltip: tip({ trigger:"item" }),
-    legend:{ top:0, itemWidth:14, itemHeight:9,
-      textStyle:{color:"#5a6472",fontSize:12,fontFamily:FONT} },
-    radar:{ indicator: ind, radius:"64%", center:["50%","56%"],
-      axisName:{color:"#5a6472",fontSize:11,fontFamily:FONT},
-      splitLine:{lineStyle:{color:"#eef1f4"}},
-      splitArea:{areaStyle:{color:["#fff","#fafbfc"]}},
-      axisLine:{lineStyle:{color:"#eef1f4"}} },
-    series:[{ type:"radar", symbolSize:4,
-      data: picked.map(function(e){
-        return {
-          name:e.cn, symbolSize:4,
-          lineStyle:{width: e.iso==="CHN"?3:1.8, color:e.color},
-          itemStyle:{color:e.color},
-          areaStyle:{color:e.color, opacity: e.iso==="CHN"?0.16:0.07},
-          value: DOMS.map(function(d){
-            var b = DATA.domain.equal[d.id];
-            var v = nth(b,e.iso) ? b[e.iso][YIDX[y]] : null;
-            return v===null?0:r1(v);
-          })
-        };
-      })
-    }]
-  });
-}
+  function renderRadarPicker() {
+    const d = el('radarPick'); if (!d) return;
+    d.innerHTML = '';
+    const lbl = document.createElement('span');
+    lbl.style.cssText = 'font-size:12.5px;color:#5a6472;margin-right:6px';
+    lbl.textContent = '选择国家：';
+    d.appendChild(lbl);
+    ENT.forEach((e) => {
+      const b = document.createElement('button');
+      b.className = `btn mini${radarPicked[e.iso] ? ' on' : ''}`;
+      b.textContent = e.cn;
+      b.onclick = function () {
+        radarPicked[e.iso] = !radarPicked[e.iso];
+        if (!Object.keys(radarPicked).filter((k) => radarPicked[k]).length) {
+          radarPicked[e.iso] = true; return;
+        }
+        renderRadarPicker(); renderRadar();
+      };
+      d.appendChild(b);
+    });
+  }
+  function renderRadar() {
+    const y = DE; // 数据年，非面板末年
+    const picked = ENT.filter((e) => radarPicked[e.iso]);
+    const ind = DOMS.map((d) => ({ name: d.cn.length > 7 ? `${d.cn.slice(0, 7)}…` : d.cn, max: 100 }));
+    draw('cRadar', {
+      tooltip: tip({ trigger: 'item' }),
+      legend: {
+        top: 0, itemWidth: 14, itemHeight: 9,
+        textStyle: { color: '#5a6472', fontSize: 12, fontFamily: FONT },
+      },
+      radar: {
+        indicator: ind, radius: '64%', center: ['50%', '56%'],
+        axisName: { color: '#5a6472', fontSize: 11, fontFamily: FONT },
+        splitLine: { lineStyle: { color: '#eef1f4' } },
+        splitArea: { areaStyle: { color: ['#fff', '#fafbfc'] } },
+        axisLine: { lineStyle: { color: '#eef1f4' } },
+      },
+      series: [{
+        type: 'radar', symbolSize: 4,
+        data: picked.map((e) => ({
+          name: e.cn, symbolSize: 4,
+          lineStyle: { width: e.iso === 'CHN' ? 3 : 1.8, color: e.color },
+          itemStyle: { color: e.color },
+          areaStyle: { color: e.color, opacity: e.iso === 'CHN' ? 0.16 : 0.07 },
+          value: DOMS.map((d) => {
+            const b = DATA.domain.equal[d.id];
+            const v = nth(b, e.iso) ? b[e.iso][YIDX[y]] : null;
+            return v === null ? 0 : r1(v);
+          }),
+        })),
+      }],
+    });
+  }
 
-/* ============================================================
+  /* ============================================================
    02b 热力图
    ============================================================ */
-function renderHeat(){
-  var y = DE;   // 数据年，非面板末年
-  var isos = MAIN.concat(["TWN"]);
-  var data = [], maxv = 0;
-  DOMS.forEach(function(d, di){
-    isos.forEach(function(iso, ii){
-      var b = DATA.domain.equal[d.id];
-      var v = nth(b,iso) ? b[iso][YIDX[y]] : null;
-      if(v!==null){ maxv = Math.max(maxv, v); data.push([di, ii, r1(v)]); }
-      else data.push([di, ii, "-"]);
+  function renderHeat() {
+    const y = DE; // 数据年，非面板末年
+    const isos = MAIN.concat(['TWN']);
+    const data = [];
+    let maxv = 0;
+    DOMS.forEach((d, di) => {
+      isos.forEach((iso, ii) => {
+        const b = DATA.domain.equal[d.id];
+        const v = nth(b, iso) ? b[iso][YIDX[y]] : null;
+        if (v !== null) { maxv = Math.max(maxv, v); data.push([di, ii, r1(v)]); } else data.push([di, ii, '-']);
+      });
     });
-  });
-  draw("cHeat", {
-    grid:{left:70,right:20,top:20,bottom:90,containLabel:true},
-    tooltip: tip({ trigger:"item", formatter:function(p){
-      if(p.value[2]==="-") return "<b>"+isos[p.value[1]]+"</b> · "+DOMS[p.value[0]].cn+
-        "<br/><span style='color:#8b95a3'>数据覆盖率不足，不予评分</span>";
-      return "<b>"+BY[isos[p.value[1]]].cn+"</b> · "+DOMS[p.value[0]].cn+
-        "<br/>评分 <b>"+p.value[2]+"</b>"; }}),
-    xAxis: axis({type:"category", data: DOMS.map(function(d){return d.cn;}),
-      splitArea:{show:true}, axisLabel:{color:"#5a6472",fontSize:11,fontFamily:FONT,
-        interval:0, rotate:38, width:96, overflow:"truncate", align:"right"}}),
-    yAxis: axis({type:"category", data: isos.map(function(i){return BY[i].cn;}),
-      splitArea:{show:true},
-      axisLabel:{color:"#5a6472",fontSize:11.5,fontFamily:FONT}}),
-    visualMap:{ min:20, max:90, calculable:true, orient:"horizontal",
-      left:"center", bottom:0, itemWidth:14, itemHeight:130,
-      textStyle:{color:"#8b95a3",fontSize:11,fontFamily:FONT},
-      inRange:{ color:["#f7c9c9","#f5e6c8","#d9ecd8","#a8d5ba","#4a9d6e","#1f6b4a"] } },
-    series:[{ type:"heatmap", data: data,
-      label:{show:true, fontSize:10.5, fontFamily:FONT,
-        formatter:function(p){ return p.value[2]==="-"? "·" : Math.round(p.value[2]); },
-        color:"#1a1d21" },
-      itemStyle:{ borderColor:"#fff", borderWidth:2, borderRadius:4 },
-      emphasis:{ itemStyle:{ shadowBlur:8, shadowColor:"rgba(0,0,0,.2)" } } }]
-  });
-}
+    draw('cHeat', {
+      grid: { left: 70, right: 20, top: 20, bottom: 90, containLabel: true },
+      tooltip: tip({
+        trigger: 'item', formatter(p) {
+          if (p.value[2] === '-') {
+            return `<b>${isos[p.value[1]]}</b> · ${DOMS[p.value[0]].cn
+            }<br/><span style='color:#8b95a3'>数据覆盖率不足，不予评分</span>`;
+          }
+          return `<b>${BY[isos[p.value[1]]].cn}</b> · ${DOMS[p.value[0]].cn
+          }<br/>评分 <b>${p.value[2]}</b>`;
+        },
+      }),
+      xAxis: axis({
+        type: 'category', data: DOMS.map((d) => d.cn),
+        splitArea: { show: true }, axisLabel: {
+          color: '#5a6472', fontSize: 11, fontFamily: FONT,
+          interval: 0, rotate: 38, width: 96, overflow: 'truncate', align: 'right',
+        },
+      }),
+      yAxis: axis({
+        type: 'category', data: isos.map((i) => BY[i].cn),
+        splitArea: { show: true },
+        axisLabel: { color: '#5a6472', fontSize: 11.5, fontFamily: FONT },
+      }),
+      visualMap: {
+        min: 20, max: 90, calculable: true, orient: 'horizontal',
+        left: 'center', bottom: 0, itemWidth: 14, itemHeight: 130,
+        textStyle: { color: '#8b95a3', fontSize: 11, fontFamily: FONT },
+        inRange: { color: ['#f7c9c9', '#f5e6c8', '#d9ecd8', '#a8d5ba', '#4a9d6e', '#1f6b4a'] },
+      },
+      series: [{
+        type: 'heatmap', data,
+        label: {
+          show: true, fontSize: 10.5, fontFamily: FONT,
+          formatter(p) { return p.value[2] === '-' ? '·' : Math.round(p.value[2]); },
+          color: '#1a1d21',
+        },
+        itemStyle: { borderColor: '#fff', borderWidth: 2, borderRadius: 4 },
+        emphasis: { itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,.2)' } },
+      }],
+    });
+  }
 
-/* ============================================================
+  /* ============================================================
    02c 各领域分面图
    ============================================================ */
-function renderInputs(){
-  var host = el("inputTable"); if(!host) return;
-  var rows = DATA.inputs || [];
-  if(!rows.length){ host.innerHTML = ""; return; }
-  var isos = ENT.map(function(e){ return e.iso; });
-  var nm = {}; ENT.forEach(function(e){ nm[e.iso] = e.cn; });
-  var h = '<table style="width:100%;border-collapse:collapse;font-size:12.5px">';
-  h += '<thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.18)">指标</th>'
+  function renderInputs() {
+    const host = el('inputTable'); if (!host) return;
+    const rows = DATA.inputs || [];
+    if (!rows.length) { host.innerHTML = ''; return; }
+    const isos = ENT.map((e) => e.iso);
+    const nm = {}; ENT.forEach((e) => { nm[e.iso] = e.cn; });
+    let h = '<table style="width:100%;border-collapse:collapse;font-size:12.5px">';
+    // 位次不再单列——用户指出中国数据与位次并列显示即可（5.94 第8/10），
+    // 单开会让人在同一行里看到中国两次。位次并入中国那一格。
+    h += '<thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.18)">指标</th>'
      + '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.18)">领域</th>'
-     + '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.18)">基准年<span style="opacity:.5;font-size:10px">（覆盖过半的最新一年，全表同一年）</span></th>'
-     // 位次不再单列——用户指出中国数据与位次并列显示即可（5.94　第8/10），
-     // 单开会让人在同一行里看到中国两次。位次并入中国那一格。
-     ;
-  isos.forEach(function(iso){
-    h += '<th style="text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.18)'
-       // 中国用深红加粗：原先用浅黄 #fde68a，在浅色卡片上对比度太低，
-       // 用户反映"看不清"。深色调在明暗两种底色上都够醒目。
-       + (iso==="CHN" ? ';color:#b91c1c;font-weight:800' : '') + '">' + nm[iso] + '</th>';
-  });
-  h += '</tr></thead><tbody>';
-  rows.forEach(function(r){
-    h += '<tr><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.07)">'
-       + r.name + '<span style="opacity:.55">　' + r.unit + '</span></td>'
-       + '<td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.07);opacity:.75">'
-       + (r.domain_cn||"") + '</td>'
-       + '<td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.07);opacity:.75">'
-       + r.year + ' 年'
-       + (r.n_ent ? '<span style="opacity:.55;font-size:11px">　覆盖 ' + r.n_ent + '/'
-                    + isos.length + '</span>' : '')
-       + ((+r.year && (+r.year) < 2010) ? '<span style="opacity:.7;font-size:11px;color:#fcd34d">　较早</span>' : '')
-       + '</td>';
-    isos.forEach(function(iso){
-      var v = r.vals[iso];
-      // 各实体取自己最新的一年，故每格标出自己的年份——否则跨年份的数字并列
-      // 会误导（税收占 GDP 的表里最早与最晚相差 30 年）。
-      // 全表已统一到同一年（export 取"覆盖过半的最新一年"），无需逐格标年。
-      // 早先各取最新时年份相差 31 年，那时才需要逐格标；现在不必。
-      var yy = '';
-      var t = (v===undefined||v===null) ? "—"
-            : ((Math.abs(v) >= 1e6 ? (v/1e8).toFixed(1)+" 亿" : String(v)) + yy);
-      // 中国那一格同时给出位次，省掉一列——否则同一行里中国出现两次。
-      if(iso === "CHN" && r.rank){
-        t += ' <span style="opacity:.6;font-size:11px;font-weight:400">第 '
-           + r.rank + '/' + r.n_rank + '</span>';
-      }
-      h += '<td style="text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.07)'
-         + (iso==="CHN" ? ';color:#b91c1c;font-weight:700' : '') + '">' + t + '</td>';
+     + '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.18)">基准年<span style="opacity:.5;font-size:10px">（覆盖过半的最新一年，全表同一年）</span></th>';
+    isos.forEach((iso) => {
+      h += `<th style="text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.18)${
+        // 中国用深红加粗：原先用浅黄 #fde68a，在浅色卡片上对比度太低，
+        // 用户反映"看不清"。深色调在明暗两种底色上都够醒目。
+        iso === 'CHN' ? ';color:#b91c1c;font-weight:800' : ''}">${nm[iso]}</th>`;
     });
-    h += '</tr>';
-  });
-  h += '</tbody></table>';
-  host.innerHTML = h;
-}
+    h += '</tr></thead><tbody>';
+    rows.forEach((r) => {
+      h += `<tr><td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.07)">${
+        r.name}<span style="opacity:.55">　${r.unit}</span></td>`
+       + `<td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.07);opacity:.75">${
+         r.domainsidecn || ''}</td>`
+       + `<td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.07);opacity:.75">${
+         r.year} 年${
+         r.n_ent ? `<span style="opacity:.55;font-size:11px">　覆盖 ${r.n_ent}/${
+           isos.length}</span>` : ''
+       }${(+r.year && (+r.year) < 2010) ? '<span style="opacity:.7;font-size:11px;color:#fcd34d">　较早</span>' : ''
+       }</td>`;
+      isos.forEach((iso) => {
+        const v = r.vals[iso];
+        // 各实体取自己最新的一年，故每格标出自己的年份——否则跨年份的数字并列
+        // 会误导（税收占 GDP 的表里最早与最晚相差 30 年）。
+        // 全表已统一到同一年（export 取"覆盖过半的最新一年"），无需逐格标年。
+        // 早先各取最新时年份相差 31 年，那时才需要逐格标；现在不必。
+        const yy = '';
+        let t = (v === undefined || v === null) ? '—'
+          : ((Math.abs(v) >= 1e6 ? `${(v / 1e8).toFixed(1)} 亿` : String(v)) + yy);
+        // 中国那一格同时给出位次，省掉一列——否则同一行里中国出现两次。
+        if (iso === 'CHN' && r.rank) {
+          t += ` <span style="opacity:.6;font-size:11px;font-weight:400">第 ${
+            r.rank}/${r.n_rank}</span>`;
+        }
+        h += `<td style="text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.07)${
+          iso === 'CHN' ? ';color:#b91c1c;font-weight:700' : ''}">${t}</td>`;
+      });
+      h += '</tr>';
+    });
+    h += '</tbody></table>';
+    host.innerHTML = h;
+  }
 
-/* 十二领域总览（第 02 节首屏）。
+  /* 十二领域总览（第 02 节首屏）。
    用户指出：点进「十二领域」后看不到这十二个领域分别是什么，领域名只出现在
    下面分面图的标题里，要先滚很久。这里按五大类分组、每格给出中国当年的位次与评分。
    位次与评分都从 DATA 现取，不写死。 */
-function renderDomOverview(){
-  var host = el("domOverview"); if(!host) return;
-  var y = DATA.meta.data_end;
-  var yi = DATA.years.indexOf(y);
-  // 位次只算**主榜国家**（entities 里 main 为真者），与 00 节发现卡片、
-  // 第 02 节各处口径一致——台湾地区是参照，不进排名分母。
-  // 起初这里算了全部实体，同一领域于是出现「第 10/11」与卡片「第 9/10」两个分母。
-  var mains = (DATA.entities || []).filter(function(e){ return e.main; })
-    .map(function(e){ return e.iso; });
-  var cats = [];
-  DATA.domains.forEach(function(d){ if(cats.indexOf(d.cat) < 0) cats.push(d.cat); });
-  host.innerHTML = cats.map(function(cat){
-    var ds = DATA.domains.filter(function(d){ return d.cat === cat; });
-    var items = ds.map(function(d){
-      var block = ((DATA.domain || {}).equal || {})[d.id] || {};
-      var chn = block.CHN || [];
-      var v = (yi >= 0 && yi < chn.length) ? chn[yi] : null;
-      var rk = null, tot = 0;
-      if(v !== null && v !== undefined){
-        var all = mains.map(function(iso){ return (block[iso] || [])[yi]; })
-          .filter(function(x){ return x !== null && x !== undefined; })
-          .sort(function(p, q){ return q - p; });
-        tot = all.length;
-        rk = all.indexOf(v) + 1;
+  function renderDomOverview() {
+    const host = el('domOverview'); if (!host) return;
+    const y = DATA.meta.data_end;
+    const yi = DATA.years.indexOf(y);
+    // 位次只算**主榜国家**（entities 里 main 为真者），与 00 节发现卡片、
+    // 第 02 节各处口径一致——台湾地区是参照，不进排名分母。
+    // 起初这里算了全部实体，同一领域于是出现「第 10/11」与卡片「第 9/10」两个分母。
+    const mains = (DATA.entities || []).filter((e) => e.main)
+      .map((e) => e.iso);
+    const cats = [];
+    DATA.domains.forEach((d) => { if (cats.indexOf(d.cat) < 0) cats.push(d.cat); });
+    host.innerHTML = cats.map((cat) => {
+      const ds = DATA.domains.filter((d) => d.cat === cat);
+      const items = ds.map((d) => {
+        const block = ((DATA.domain || {}).equal || {})[d.id] || {};
+        const chn = block.CHN || [];
+        const v = (yi >= 0 && yi < chn.length) ? chn[yi] : null;
+        let rk = null;
+        let tot = 0;
+        if (v !== null && v !== undefined) {
+          const all = mains.map((iso) => (block[iso] || [])[yi])
+            .filter((x) => x !== null && x !== undefined)
+            .sort((p, q) => q - p);
+          tot = all.length;
+          rk = all.indexOf(v) + 1;
+        }
+        return `<div class='it'><b>${d.cn}</b><span class='rk'>${
+          rk ? `第 <b>${rk}</b>/${tot}　` : ''
+        }${v === null || v === undefined ? '当年无数据' : v.toFixed(1)}</span></div>`;
+      }).join('');
+      return `<div class='cat'><div class='catn'>${cat}</div>`
+      + `<div class='items'>${items}</div></div>`;
+    }).join('');
+  }
+
+  function renderDomains() {
+    const host = el('domainGrid'); if (!host) return;
+    host.innerHTML = '';
+    DOMS.forEach((d) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      const t = document.createElement('p'); t.className = 'chartTitle'; t.textContent = d.cn;
+      const n = document.createElement('p'); n.className = 'chartNote';
+      const devs0 = (((DATA.events || {}).by_domain || {})[d.id] || []);
+      n.textContent = d.cat + (devs0.length
+        ? `　｜　标注：${devs0.map((e) => `${e.year} ${e.name}`).join('、')}` : '');
+      const box = document.createElement('div'); box.id = `dom_${d.id}`; box.className = 'chart sm';
+      card.appendChild(t); card.appendChild(n); card.appendChild(box);
+      // 该领域的曲线显著低于其他领域，不加说明会被直接读成「治理能力差」。
+      // 该领域 19 个指标里 17 个来自同一类政治制度评价性指数，构成特殊，须在图下点明。
+      if (d.id === DATA.institutions.domain) {
+        const w = document.createElement('div');
+        w.className = 'note warn';
+        w.style.cssText = 'margin-top:8px;font-size:12px;line-height:1.6';
+        // 此处只需点明「不可与其他领域等量齐观」并给出去处；
+        // 构成细节归第 06 节，避免同一段说明在报告中重复三次。
+        // 文案取自 DATA.institutions.note（catalog.d11_composition() 的导出），
+        // 与核心发现、第 06 节图表说明共用同一来源，避免多处措辞漂移。
+        w.innerHTML = `<b>本领域构成特殊，勿与其他领域直接比较。</b>${
+          DATA.institutions.note ? DATA.institutions.note.mini : ''
+        }详见第 06 节与第 09 节「局限与免责」。`;
+        card.appendChild(w);
       }
-      return "<div class='it'><b>" + d.cn + "</b><span class='rk'>"
-        + (rk ? "第 <b>" + rk + "</b>/" + tot + "　" : "")
-        + (v === null || v === undefined ? "当年无数据" : v.toFixed(1)) + "</span></div>";
-    }).join("");
-    return "<div class='cat'><div class='catn'>" + cat + "</div>"
-      + "<div class='items'>" + items + "</div></div>";
-  }).join("");
-}
+      host.appendChild(card);
+    });
+    DOMS.forEach((d) => { renderOneDomain(d.id); });
+  }
+  function renderOneDomain(did) {
+    const ys = yearsInView();
+    const blk = DATA.domain.equal[did];
+    const ok = MAIN.concat(['TWN']).filter((iso) => pick(blk, iso, ys).some((v) => v !== null));
+    if (!ok.length) return;
+    // 只标注与该领域相关的事件（避免用同一套事件暗示所有领域都受同样影响）
+    const devs = (((DATA.events || {}).by_domain || {})[did] || []).filter((e) => {
+      const hi = e.rng ? e.rng[1] : e.year;
+      return e.year <= view.end && hi >= view.start;
+    });
+    const DEM = showEvents ? buildEventMarks(devs, false) : { lines: [], areas: [] };
+    draw(`dom_${did}`, {
+      grid: { left: 38, right: 58, top: 14, bottom: 26, containLabel: true },
+      tooltip: tip({
+        formatter(ps) {
+          const y = parseInt(ps[0].axisValue, 10);
+          let s = `<b>${y} 年</b><br/>`;
+          ps.filter((p) => p.value !== null && p.seriesName !== '__ev')
+            .sort((a, b) => b.value - a.value)
+            .forEach((p) => { s += `${p.marker} ${p.seriesName}　<b>${r1(p.value)}</b><br/>`; });
+          return s + eventTipHTML(devs, y); // 领域图同样在数据下方显示相关事件
+        },
+      }),
+      xAxis: axis({
+        type: 'category', data: ys.map(String),
+        axisLabel: {
+          color: '#8b95a3', fontSize: 10, fontFamily: FONT,
+          interval: view.tick === '1y' ? 1 : (view.tick === '3y' ? 5 : 9),
+        },
+      }),
+      yAxis: axis({ type: 'value', min: 0, max: 100 }),
+      series: (function () {
+        const spd = sparseMarkArea(ys, 0, 0);
+        let arr = ok.map((iso) => lineSeries(iso, ys, blk, {}));
+        if (spd) {
+          arr = [{
+            name: '__sp', type: 'line', data: [], silent: true, z: 0,
+            markArea: spd,
+          }].concat(arr);
+        }
+        return arr.concat([{
+          name: '__ev', type: 'line', data: [], silent: true, z: 1,
+          markLine: { silent: true, symbol: 'none', data: DEM.lines },
+          markArea: { silent: true, data: DEM.areas },
+        }]);
+      }()),
+      labelLayout: { hideOverlap: true },
+    });
+  }
 
-function renderDomains(){
-  var host = el("domainGrid"); if(!host) return;
-  host.innerHTML = "";
-  DOMS.forEach(function(d){
-    var card = document.createElement("div");
-    card.className = "card";
-    var t = document.createElement("p"); t.className="chartTitle"; t.textContent = d.cn;
-    var n = document.createElement("p"); n.className="chartNote";
-    var devs0 = (((DATA.events || {}).by_domain || {})[d.id] || []);
-    n.textContent = d.cat + (devs0.length ?
-      "　｜　标注：" + devs0.map(function(e){ return e.year + " " + e.name; }).join("、") : "");
-    var box = document.createElement("div"); box.id = "dom_"+d.id; box.className="chart sm";
-    card.appendChild(t); card.appendChild(n); card.appendChild(box);
-    // 该领域的曲线显著低于其他领域，不加说明会被直接读成「治理能力差」。
-    // 该领域 19 个指标里 17 个来自同一类政治制度评价性指数，构成特殊，须在图下点明。
-    if(d.id === DATA.institutions.domain){
-      var w = document.createElement("div");
-      w.className = "note warn";
-      w.style.cssText = "margin-top:8px;font-size:12px;line-height:1.6";
-      // 此处只需点明「不可与其他领域等量齐观」并给出去处；
-      // 构成细节归第 06 节，避免同一段说明在报告中重复三次。
-      // 文案取自 DATA.institutions.note（catalog.d11_composition() 的导出），
-      // 与核心发现、第 06 节图表说明共用同一来源，避免多处措辞漂移。
-      w.innerHTML = "<b>本领域构成特殊，勿与其他领域直接比较。</b>"
-        + (DATA.institutions.note ? DATA.institutions.note.mini : "")
-        + "详见第 06 节与第 09 节「局限与免责」。";
-      card.appendChild(w);
-    }
-    host.appendChild(card);
-  });
-  DOMS.forEach(function(d){ renderOneDomain(d.id); });
-}
-function renderOneDomain(did){
-  var ys = yearsInView();
-  var blk = DATA.domain.equal[did];
-  var ok = MAIN.concat(["TWN"]).filter(function(iso){
-    return pick(blk, iso, ys).some(function(v){ return v!==null; });
-  });
-  if(!ok.length) return;
-  // 只标注与该领域相关的事件（避免用同一套事件暗示所有领域都受同样影响）
-  var devs = (((DATA.events || {}).by_domain || {})[did] || []).filter(function(e){
-    var hi = e.rng ? e.rng[1] : e.year;
-    return e.year <= view.end && hi >= view.start;
-  });
-  var DEM = showEvents ? buildEventMarks(devs, false) : { lines: [], areas: [] };
-  draw("dom_"+did, {
-    grid:{left:38,right:58,top:14,bottom:26,containLabel:true},
-    tooltip: tip({ formatter:function(ps){
-      var y = parseInt(ps[0].axisValue, 10);
-      var s="<b>"+y+" 年</b><br/>";
-      ps.filter(function(p){return p.value!==null && p.seriesName!=="__ev";})
-        .sort(function(a,b){return b.value-a.value;})
-        .forEach(function(p){ s+=p.marker+" "+p.seriesName+"　<b>"+r1(p.value)+"</b><br/>"; });
-      return s + eventTipHTML(devs, y);   // 领域图同样在数据下方显示相关事件
-    }}),
-    xAxis: axis({type:"category", data: ys.map(String),
-      axisLabel:{color:"#8b95a3",fontSize:10,fontFamily:FONT,
-        interval: view.tick==="1y"?1:(view.tick==="3y"?5:9)}}),
-    yAxis: axis({type:"value", min:0, max:100}),
-    series: (function(){
-      var spd = sparseMarkArea(ys, 0, 0);
-      var arr = ok.map(function(iso){ return lineSeries(iso, ys, blk, {}); });
-      if(spd) arr = [{ name:"__sp", type:"line", data:[], silent:true, z:0,
-                       markArea: spd }].concat(arr);
-      return arr.concat([{ name:"__ev", type:"line", data:[], silent:true, z:1,
-        markLine:{ silent:true, symbol:"none", data: DEM.lines },
-        markArea:{ silent:true, data: DEM.areas } }]);
-    })(),
-    labelLayout:{hideOverlap:true}
-  });
-}
-
-/* ============================================================
+  /* ============================================================
    03 中国专题
    ============================================================ */
-function renderGap(){
-  var ys = yearsInView();
-  var blk = DATA.overall[mode];
-  var cn = pick(blk,"CHN",ys);
-  var hi = ys.map(function(y){
-    var vals = HIGH_INCOME.map(function(i){ return nth(blk,i)? blk[i][YIDX[y]] : null; })
-      .filter(function(v){ return v!==null; });
-    return vals.length>=3 ? r1(median(vals)) : null;
-  });
-  var hiNames = HIGH_INCOME.map(function(i){ return BY[i] ? BY[i].cn : i; }).join("、");
-  var gapNote = el("gapNote");
-  if(gapNote) gapNote.innerHTML = "阴影为差距，数值为负表示低于高收入国家中位数。"
-    + "<b>「七个高收入国家」指：" + hiNames + "</b>（共 7 国，取其中位数）。"
-    + "样本取该年至少有 3 国有数据的年份，否则中位数为空。";
-  draw("cGap", {
-    grid: gridWithAxisName(), tooltip: tip({ formatter:function(ps){
-      var s="<b>"+ps[0].axisValue+" 年</b><br/>";
-      ps.forEach(function(p){ if(p.value!==null)
-        s += p.marker+" "+p.seriesName+"　<b>"+r1(p.value)+"</b><br/>"; });
-      var a=ps[0].value, b=ps[1]?ps[1].value:null;
-      if(a!==null&&b!==null) s += "<span style='color:#c8102e'>差距 "+
-        (a-b>=0?"+":"")+r1(a-b)+"</span>";
-      return s; }}),
-    legend:{top:0,left:0,itemWidth:14,itemHeight:9,
-      textStyle:{color:"#5a6472",fontSize:12,fontFamily:FONT}},
-    xAxis: axis({type:"category", data:ys.map(String),
-      axisLabel:{color:"#8b95a3",fontSize:11,fontFamily:FONT,
-        interval: view.tick==="1y"?0:(view.tick==="3y"?2:4)}}),
-    yAxis: axis({type:"value", min:20, max:80, name:"综合评分",
-      nameTextStyle:{color:"#8b95a3",fontSize:11,fontFamily:FONT}}),
-    series:[
-      { name:"中国", type:"line", data:cn, symbolSize:5, showSymbol:false, connectNulls:true,
-        lineStyle:{width:3.4,color:"#c8102e"}, itemStyle:{color:"#c8102e"}, z:10,
-        areaStyle:{color:"rgba(200,16,46,.07)"},
-        endLabel:{show:true,formatter:"中国",color:"#c8102e",fontSize:11,fontFamily:FONT,distance:6} },
-      { name:"七个高收入国家中位数", type:"line", data:hi, symbolSize:4, showSymbol:false, connectNulls:true,
-        lineStyle:{width:2.2,color:"#1f6feb",type:"dashed"}, itemStyle:{color:"#1f6feb"},
-        endLabel:{show:true,formatter:"高收入中位",color:"#1f6feb",fontSize:11,fontFamily:FONT,distance:6} }
-    ]
-  });
-}
-
-function renderCNDelta(){
-  var y0=1990, y1=DE;
-  var rows = DOMS.map(function(d){
-    var b = DATA.domain.equal[d.id];
-    var a = nth(b,"CHN")? b["CHN"][YIDX[y0]] : null;
-    var c = nth(b,"CHN")? b["CHN"][YIDX[y1]] : null;
-    return { cn:d.cn, a:a, b:c, delta:(a!==null&&c!==null)? r1(c-a):null };
-  }).filter(function(o){ return o.delta!==null; })
-    .sort(function(p,q){ return p.delta-q.delta; });
-
-  draw("cCNDelta", {
-    grid:{left:64,right:70,top:16,bottom:24,containLabel:true},
-    tooltip: tip({ trigger:"item", formatter:function(p){
-      var o = rows[p.dataIndex];
-      return "<b>"+o.cn+"</b><br/>1990 年 "+r1(o.a)+" → "+DE+" 年 <b>"+r1(o.b)+"</b><br/>变化 <b>"+
-        (o.delta>=0?"+":"")+o.delta+"</b>"; }}),
-    xAxis: axis({type:"value", name:"评分变化", 
-      nameTextStyle:{color:"#8b95a3",fontSize:11,fontFamily:FONT}}),
-    yAxis: axis({type:"category", data: rows.map(function(o){return o.cn;}),
-      axisLabel:{color:"#5a6472",fontSize:11,fontFamily:FONT}}),
-    series:[{ type:"bar", barWidth:"62%",
-      data: rows.map(function(o){ return { value:o.delta,
-        itemStyle:{ color: o.delta>=0? "#c8102e":"#94a3b8", borderRadius: o.delta>=0?[0,4,4,0]:[4,0,0,4] } }; }),
-      label:{show:true, fontSize:11, fontFamily:FONT, color:"#5a6472",
-        position:"right", formatter:function(p){ return (p.value>=0?"+":"")+p.value; }}
-    }]
-  });
-}
-
-function renderCNContrib(){
-  var y0=1990, y1=DE;
-  var rows=[];
-  DOMS.forEach(function(d){
-    var b = DATA.domain.equal[d.id];
-    var a = nth(b,"CHN")? b["CHN"][YIDX[y0]] : null;
-    var c = nth(b,"CHN")? b["CHN"][YIDX[y1]] : null;
-    if(a!==null&&c!==null) rows.push({cn:d.cn, delta:c-a});
-  });
-  var tot = avg(rows.map(function(r){return r.delta;}));
-  draw("cCNContrib", {
-    grid:{left:30,right:26,top:34,bottom:60,containLabel:true},
-    tooltip: tip({ trigger:"axis", axisFormatter:null, formatter:function(ps){
-      var p=ps[0];
-      return "<b>"+p.name+"</b><br/>相对 1990 年变化 <b>"+
-        (p.value>=0?"+":"")+r1(p.value)+"</b> 分<br/><span style='color:#8b95a3'>十二领域平均变化 "+
-        (tot>=0?"+":"")+r1(tot)+" 分</span>"; }}),
-    xAxis: axis({type:"category", data: rows.map(function(r){return r.cn;}),
-      axisLabel:{color:"#5a6472",fontSize:10.5,fontFamily:FONT,interval:0,rotate:38,
-        width:80, overflow:"truncate", align:"right"}}),
-    yAxis: axis({type:"value", name:"评分变化",
-      nameTextStyle:{color:"#8b95a3",fontSize:11,fontFamily:FONT}}),
-    series:[{ type:"bar", barWidth:"58%",
-      data: rows.map(function(r){ return { value:r1(r.delta),
-        itemStyle:{ color: r.delta>=0? "#c8102e":"#94a3b8", borderRadius:[3,3,0,0] } }; }),
-      markLine:{ silent:true, symbol:"none",
-        lineStyle:{color:"#c3cbd6",type:"dashed"},
-        data:[{ yAxis: r1(tot), label:{formatter:"平均", color:"#8b95a3", fontSize:10,
-          fontFamily:FONT, position:"end" } }] }
-    }]
-  });
-}
-
-function renderCNGrid(){
-  var host = el("cnGrid"); if(!host) return;
-  host.innerHTML="";
-  var picks = ["health","economy","science","environment","institutions","defense"];
-  picks.forEach(function(did){
-    var d = DOMS.filter(function(x){return x.id===did;})[0];
-    var card = document.createElement("div");
-    card.className="card";
-    var t=document.createElement("p"); t.className="chartTitle"; t.textContent=d.cn;
-    var n=document.createElement("p"); n.className="chartNote";
-    n.textContent="中国 vs 美国 / 德国 / 日本 / 印度";
-    var box=document.createElement("div"); box.id="cn_"+did; box.className="chart sm";
-    card.appendChild(t);card.appendChild(n);card.appendChild(box);
-    host.appendChild(card);
-  });
-  var ys = yearsInView();
-  picks.forEach(function(did){
-    var blk = DATA.domain.equal[did];
-    var show = ["CHN","USA","DEU","JPN","IND"].filter(function(iso){
-      return pick(blk,iso,ys).some(function(v){return v!==null;}); });
-    draw("cn_"+did, {
-      grid:{left:38,right:56,top:14,bottom:26,containLabel:true},
-      tooltip: tip({ formatter:function(ps){
-        var s="<b>"+ps[0].axisValue+" 年</b><br/>";
-        ps.filter(function(p){return p.value!==null;})
-          .sort(function(a,b){return b.value-a.value;})
-          .forEach(function(p){ s+=p.marker+" "+p.seriesName+"　<b>"+r1(p.value)+"</b><br/>"; });
-        return s; }}),
-      xAxis: axis({type:"category", data:ys.map(String),
-        axisLabel:{color:"#8b95a3",fontSize:10,fontFamily:FONT,
-          interval: view.tick==="1y"?1:(view.tick==="3y"?5:9)}}),
-      yAxis: axis({type:"value", min:0, max:100}),
-      series: show.map(function(iso){ return lineSeries(iso, ys, blk, {}); })
+  function renderGap() {
+    const ys = yearsInView();
+    const blk = DATA.overall[mode];
+    const cn = pick(blk, 'CHN', ys);
+    const hi = ys.map((y) => {
+      const vals = HIGH_INCOME.map((i) => (nth(blk, i) ? blk[i][YIDX[y]] : null))
+        .filter((v) => v !== null);
+      return vals.length >= 3 ? r1(median(vals)) : null;
     });
-  });
-}
+    const hiNames = HIGH_INCOME.map((i) => (BY[i] ? BY[i].cn : i)).join('、');
+    const gapNote = el('gapNote');
+    if (gapNote) {
+      gapNote.innerHTML = '阴影为差距，数值为负表示低于高收入国家中位数。'
+    + `<b>「七个高收入国家」指：${hiNames}</b>（共 7 国，取其中位数）。`
+    + '样本取该年至少有 3 国有数据的年份，否则中位数为空。';
+    }
+    draw('cGap', {
+      grid: gridWithAxisName(), tooltip: tip({
+        formatter(ps) {
+          let s = `<b>${ps[0].axisValue} 年</b><br/>`;
+          ps.forEach((p) => {
+            if (p.value !== null) s += `${p.marker} ${p.seriesName}　<b>${r1(p.value)}</b><br/>`;
+          });
+          const a = ps[0].value;
+          const b = ps[1] ? ps[1].value : null;
+          if (a !== null && b !== null) {
+            s += `<span style='color:#c8102e'>差距 ${
+              a - b >= 0 ? '+' : ''}${r1(a - b)}</span>`;
+          }
+          return s;
+        },
+      }),
+      legend: {
+        top: 0, left: 0, itemWidth: 14, itemHeight: 9,
+        textStyle: { color: '#5a6472', fontSize: 12, fontFamily: FONT },
+      },
+      xAxis: axis({
+        type: 'category', data: ys.map(String),
+        axisLabel: {
+          color: '#8b95a3', fontSize: 11, fontFamily: FONT,
+          interval: view.tick === '1y' ? 0 : (view.tick === '3y' ? 2 : 4),
+        },
+      }),
+      yAxis: axis({
+        type: 'value', min: 20, max: 80, name: '综合评分',
+        nameTextStyle: { color: '#8b95a3', fontSize: 11, fontFamily: FONT },
+      }),
+      series: [
+        {
+          name: '中国', type: 'line', data: cn, symbolSize: 5, showSymbol: false, connectNulls: true,
+          lineStyle: { width: 3.4, color: '#c8102e' }, itemStyle: { color: '#c8102e' }, z: 10,
+          areaStyle: { color: 'rgba(200,16,46,.07)' },
+          endLabel: { show: true, formatter: '中国', color: '#c8102e', fontSize: 11, fontFamily: FONT, distance: 6 },
+        },
+        {
+          name: '七个高收入国家中位数', type: 'line', data: hi, symbolSize: 4, showSymbol: false, connectNulls: true,
+          lineStyle: { width: 2.2, color: '#1f6feb', type: 'dashed' }, itemStyle: { color: '#1f6feb' },
+          endLabel: { show: true, formatter: '高收入中位', color: '#1f6feb', fontSize: 11, fontFamily: FONT, distance: 6 },
+        },
+      ],
+    });
+  }
 
-/* ============================================================
+  function renderCNDelta() {
+    const y0 = 1990;
+    const y1 = DE;
+    const rows = DOMS.map((d) => {
+      const b = DATA.domain.equal[d.id];
+      const a = nth(b, 'CHN') ? b.CHN[YIDX[y0]] : null;
+      const c = nth(b, 'CHN') ? b.CHN[YIDX[y1]] : null;
+      return { cn: d.cn, a, b: c, delta: (a !== null && c !== null) ? r1(c - a) : null };
+    }).filter((o) => o.delta !== null)
+      .sort((p, q) => p.delta - q.delta);
+
+    draw('cCNDelta', {
+      grid: { left: 64, right: 70, top: 16, bottom: 24, containLabel: true },
+      tooltip: tip({
+        trigger: 'item', formatter(p) {
+          const o = rows[p.dataIndex];
+          return `<b>${o.cn}</b><br/>1990 年 ${r1(o.a)} → ${DE} 年 <b>${r1(o.b)}</b><br/>变化 <b>${
+            o.delta >= 0 ? '+' : ''}${o.delta}</b>`;
+        },
+      }),
+      xAxis: axis({
+        type: 'value', name: '评分变化',
+        nameTextStyle: { color: '#8b95a3', fontSize: 11, fontFamily: FONT },
+      }),
+      yAxis: axis({
+        type: 'category', data: rows.map((o) => o.cn),
+        axisLabel: { color: '#5a6472', fontSize: 11, fontFamily: FONT },
+      }),
+      series: [{
+        type: 'bar', barWidth: '62%',
+        data: rows.map((o) => ({
+          value: o.delta,
+          itemStyle: { color: o.delta >= 0 ? '#c8102e' : '#94a3b8', borderRadius: o.delta >= 0 ? [0, 4, 4, 0] : [4, 0, 0, 4] },
+        })),
+        label: {
+          show: true, fontSize: 11, fontFamily: FONT, color: '#5a6472',
+          position: 'right', formatter(p) { return (p.value >= 0 ? '+' : '') + p.value; },
+        },
+      }],
+    });
+  }
+
+  function renderCNContrib() {
+    const y0 = 1990;
+    const y1 = DE;
+    const rows = [];
+    DOMS.forEach((d) => {
+      const b = DATA.domain.equal[d.id];
+      const a = nth(b, 'CHN') ? b.CHN[YIDX[y0]] : null;
+      const c = nth(b, 'CHN') ? b.CHN[YIDX[y1]] : null;
+      if (a !== null && c !== null) rows.push({ cn: d.cn, delta: c - a });
+    });
+    const tot = avg(rows.map((r) => r.delta));
+    draw('cCNContrib', {
+      grid: { left: 30, right: 26, top: 34, bottom: 60, containLabel: true },
+      tooltip: tip({
+        trigger: 'axis', axisFormatter: null, formatter(ps) {
+          const p = ps[0];
+          return `<b>${p.name}</b><br/>相对 1990 年变化 <b>${
+            p.value >= 0 ? '+' : ''}${r1(p.value)}</b> 分<br/><span style='color:#8b95a3'>十二领域平均变化 ${
+            tot >= 0 ? '+' : ''}${r1(tot)} 分</span>`;
+        },
+      }),
+      xAxis: axis({
+        type: 'category', data: rows.map((r) => r.cn),
+        axisLabel: {
+          color: '#5a6472', fontSize: 10.5, fontFamily: FONT, interval: 0, rotate: 38,
+          width: 80, overflow: 'truncate', align: 'right',
+        },
+      }),
+      yAxis: axis({
+        type: 'value', name: '评分变化',
+        nameTextStyle: { color: '#8b95a3', fontSize: 11, fontFamily: FONT },
+      }),
+      series: [{
+        type: 'bar', barWidth: '58%',
+        data: rows.map((r) => ({
+          value: r1(r.delta),
+          itemStyle: { color: r.delta >= 0 ? '#c8102e' : '#94a3b8', borderRadius: [3, 3, 0, 0] },
+        })),
+        markLine: {
+          silent: true, symbol: 'none',
+          lineStyle: { color: '#c3cbd6', type: 'dashed' },
+          data: [{
+            yAxis: r1(tot), label: {
+              formatter: '平均', color: '#8b95a3', fontSize: 10,
+              fontFamily: FONT, position: 'end',
+            },
+          }],
+        },
+      }],
+    });
+  }
+
+  function renderCNGrid() {
+    const host = el('cnGrid'); if (!host) return;
+    host.innerHTML = '';
+    const picks = ['health', 'economy', 'science', 'environment', 'institutions', 'defense'];
+    picks.forEach((did) => {
+      const d = DOMS.filter((x) => x.id === did)[0];
+      const card = document.createElement('div');
+      card.className = 'card';
+      const t = document.createElement('p'); t.className = 'chartTitle'; t.textContent = d.cn;
+      const n = document.createElement('p'); n.className = 'chartNote';
+      n.textContent = '中国 vs 美国 / 德国 / 日本 / 印度';
+      const box = document.createElement('div'); box.id = `cn_${did}`; box.className = 'chart sm';
+      card.appendChild(t); card.appendChild(n); card.appendChild(box);
+      host.appendChild(card);
+    });
+    const ys = yearsInView();
+    picks.forEach((did) => {
+      const blk = DATA.domain.equal[did];
+      const show = ['CHN', 'USA', 'DEU', 'JPN', 'IND'].filter((iso) => pick(blk, iso, ys).some((v) => v !== null));
+      draw(`cn_${did}`, {
+        grid: { left: 38, right: 56, top: 14, bottom: 26, containLabel: true },
+        tooltip: tip({
+          formatter(ps) {
+            let s = `<b>${ps[0].axisValue} 年</b><br/>`;
+            ps.filter((p) => p.value !== null)
+              .sort((a, b) => b.value - a.value)
+              .forEach((p) => { s += `${p.marker} ${p.seriesName}　<b>${r1(p.value)}</b><br/>`; });
+            return s;
+          },
+        }),
+        xAxis: axis({
+          type: 'category', data: ys.map(String),
+          axisLabel: {
+            color: '#8b95a3', fontSize: 10, fontFamily: FONT,
+            interval: view.tick === '1y' ? 1 : (view.tick === '3y' ? 5 : 9),
+          },
+        }),
+        yAxis: axis({ type: 'value', min: 0, max: 100 }),
+        series: show.map((iso) => lineSeries(iso, ys, blk, {})),
+      });
+    });
+  }
+
+  /* ============================================================
    04 台湾地区
    ============================================================ */
-function renderTwn(){
-  var y = DE;   // 数据年，非面板末年
-  var rows = DOMS.map(function(d){
-    var b = DATA.domain.equal[d.id];
-    var v = nth(b,"TWN")? b["TWN"][YIDX[y]] : null;
-    return { cn:d.cn, v:v, cnVal: nth(b,"CHN")? b["CHN"][YIDX[y]] : null };
-  });
-  draw("cTwn", {
-    grid:{left:30,right:20,top:40,bottom:56,containLabel:true},
-    tooltip: tip({ trigger:"axis", formatter:function(ps){
-      var p=ps[0], o=rows[p.dataIndex];
-      if(o.v===null) return "<b>"+o.cn+"</b><br/><span style='color:#8b95a3'>台湾地区数据覆盖率不足（<40%），不予评分</span>";
-      return "<b>"+o.cn+"</b><br/>台湾地区评分 <b>"+r1(o.v)+"</b>"; }}),
-    legend:{top:0,left:0,itemWidth:14,itemHeight:9,
-      textStyle:{color:"#5a6472",fontSize:12,fontFamily:FONT}},
-    xAxis: axis({type:"category", data: rows.map(function(o){return o.cn;}),
-      axisLabel:{color:"#5a6472",fontSize:10.5,fontFamily:FONT,interval:0,rotate:38,
-        width:84,overflow:"truncate",align:"right"}}),
-    yAxis: axis({type:"value", min:0, max:100}),
-    series:[
-      { name:"台湾地区可得(≥40%覆盖)", type:"bar", barWidth:"46%", stack:"t",
-        data: rows.map(function(o){ return o.v===null?null:r1(o.v); }),
-        itemStyle:{ color:"#00B050", borderRadius:[3,3,0,0] },
-        label:{show:true, position:"top", fontSize:10.5, fontFamily:FONT, color:"#0f7b4f",
-          formatter:function(p){ return p.value===null?"":Math.round(p.value); }} },
-      { name:"数据不足", type:"bar", barWidth:"46%", stack:"t",
-        data: rows.map(function(o){ return o.v===null? 12 : null; }),
-        itemStyle:{ color:"#e8edf2" }, barGap:"-100%" }
-    ]
-  });
-}
+  function renderTwn() {
+    const y = DE; // 数据年，非面板末年
+    const rows = DOMS.map((d) => {
+      const b = DATA.domain.equal[d.id];
+      const v = nth(b, 'TWN') ? b.TWN[YIDX[y]] : null;
+      return { cn: d.cn, v, cnVal: nth(b, 'CHN') ? b.CHN[YIDX[y]] : null };
+    });
+    draw('cTwn', {
+      grid: { left: 30, right: 20, top: 40, bottom: 56, containLabel: true },
+      tooltip: tip({
+        trigger: 'axis', formatter(ps) {
+          const p = ps[0];
+          const o = rows[p.dataIndex];
+          if (o.v === null) return `<b>${o.cn}</b><br/><span style='color:#8b95a3'>台湾地区数据覆盖率不足（<40%），不予评分</span>`;
+          return `<b>${o.cn}</b><br/>台湾地区评分 <b>${r1(o.v)}</b>`;
+        },
+      }),
+      legend: {
+        top: 0, left: 0, itemWidth: 14, itemHeight: 9,
+        textStyle: { color: '#5a6472', fontSize: 12, fontFamily: FONT },
+      },
+      xAxis: axis({
+        type: 'category', data: rows.map((o) => o.cn),
+        axisLabel: {
+          color: '#5a6472', fontSize: 10.5, fontFamily: FONT, interval: 0, rotate: 38,
+          width: 84, overflow: 'truncate', align: 'right',
+        },
+      }),
+      yAxis: axis({ type: 'value', min: 0, max: 100 }),
+      series: [
+        {
+          name: '台湾地区可得(≥40%覆盖)', type: 'bar', barWidth: '46%', stack: 't',
+          data: rows.map((o) => (o.v === null ? null : r1(o.v))),
+          itemStyle: { color: '#00B050', borderRadius: [3, 3, 0, 0] },
+          label: {
+            show: true, position: 'top', fontSize: 10.5, fontFamily: FONT, color: '#0f7b4f',
+            formatter(p) { return p.value === null ? '' : Math.round(p.value); },
+          },
+        },
+        {
+          name: '数据不足', type: 'bar', barWidth: '46%', stack: 't',
+          data: rows.map((o) => (o.v === null ? 12 : null)),
+          itemStyle: { color: '#e8edf2' }, barGap: '-100%',
+        },
+      ],
+    });
+  }
 
-function renderTwnBar(){
-  var y = DE;
-  var rows = DOMS.map(function(d){
-    var b = DATA.domain.equal[d.id];
-    var tv = nth(b,"TWN")? b["TWN"][YIDX[y]] : null;
-    if(tv===null) return null;
-    return { cn:d.cn, TWN:r1(tv),
-      CHN: nth(b,"CHN")? r1(b["CHN"][YIDX[y]]) : null,
-      USA: nth(b,"USA")? r1(b["USA"][YIDX[y]]) : null,
-      DEU: nth(b,"DEU")? r1(b["DEU"][YIDX[y]]) : null };
-  }).filter(Boolean);
-  if(!rows.length){ draw("cTwnBar",{ title:{text:"台湾地区无覆盖率达标领域", left:"center", top:"center",
-    textStyle:{color:"#8b95a3",fontSize:14,fontFamily:FONT}} }); return; }
-  draw("cTwnBar", {
-    grid:{left:30,right:20,top:34,bottom:50,containLabel:true},
-    tooltip: tip({trigger:"axis",axisPointer:{type:"shadow"}}),
-    legend:{top:0,itemWidth:14,itemHeight:9,
-      textStyle:{color:"#5a6472",fontSize:12,fontFamily:FONT}},
-    xAxis: axis({type:"category", data:rows.map(function(r){return r.cn;}),
-      axisLabel:{color:"#5a6472",fontSize:11,fontFamily:FONT,interval:0,rotate:30,
-        width:110,overflow:"truncate",align:"right"}}),
-    yAxis: axis({type:"value",min:0,max:100}),
-    series: ["TWN","CHN","USA","DEU"].map(function(k){
-      var nm = BY[k].cn, col = BY[k].color;
-      return { name:nm, type:"bar", data: rows.map(function(r){ return r[k]; }),
-        itemStyle:{ color:col, opacity: k==="TWN"?1:0.7, borderRadius:[3,3,0,0] } };
-    })
-  });
-}
+  function renderTwnBar() {
+    const y = DE;
+    const rows = DOMS.map((d) => {
+      const b = DATA.domain.equal[d.id];
+      const tv = nth(b, 'TWN') ? b.TWN[YIDX[y]] : null;
+      if (tv === null) return null;
+      return {
+        cn: d.cn, TWN: r1(tv),
+        CHN: nth(b, 'CHN') ? r1(b.CHN[YIDX[y]]) : null,
+        USA: nth(b, 'USA') ? r1(b.USA[YIDX[y]]) : null,
+        DEU: nth(b, 'DEU') ? r1(b.DEU[YIDX[y]]) : null,
+      };
+    }).filter(Boolean);
+    if (!rows.length) {
+      draw('cTwnBar', {
+        title: {
+          text: '台湾地区无覆盖率达标领域', left: 'center', top: 'center',
+          textStyle: { color: '#8b95a3', fontSize: 14, fontFamily: FONT },
+        },
+      }); return;
+    }
+    draw('cTwnBar', {
+      grid: { left: 30, right: 20, top: 34, bottom: 50, containLabel: true },
+      tooltip: tip({ trigger: 'axis', axisPointer: { type: 'shadow' } }),
+      legend: {
+        top: 0, itemWidth: 14, itemHeight: 9,
+        textStyle: { color: '#5a6472', fontSize: 12, fontFamily: FONT },
+      },
+      xAxis: axis({
+        type: 'category', data: rows.map((r) => r.cn),
+        axisLabel: {
+          color: '#5a6472', fontSize: 11, fontFamily: FONT, interval: 0, rotate: 30,
+          width: 110, overflow: 'truncate', align: 'right',
+        },
+      }),
+      yAxis: axis({ type: 'value', min: 0, max: 100 }),
+      series: ['TWN', 'CHN', 'USA', 'DEU'].map((k) => {
+        const nm = BY[k].cn;
+        const col = BY[k].color;
+        return {
+          name: nm, type: 'bar', data: rows.map((r) => r[k]),
+          itemStyle: { color: col, opacity: k === 'TWN' ? 1 : 0.7, borderRadius: [3, 3, 0, 0] },
+        };
+      }),
+    });
+  }
 
-/* ============================================================
+  /* ============================================================
    05 长周期
    ============================================================ */
-function renderLong(){
-  var host = el("longGrid"); if(!host) return;
-  host.innerHTML="";
-  Object.keys(DATA.indicator).forEach(function(code){
-    var ind = DATA.indicator[code];
-    var card=document.createElement("div"); card.className="card";
-    var t=document.createElement("p"); t.className="chartTitle"; t.textContent=ind.label;
-    var n=document.createElement("p"); n.className="chartNote";
-    n.textContent="起始 "+ind.start+" 年 · "+ (ind.axis==="log"?"对数纵轴":"线性纵轴");
-    var box=document.createElement("div"); box.id="lr_"+code; box.className="chart";
-    card.appendChild(t);card.appendChild(n);card.appendChild(box);
-    host.appendChild(card);
-  });
-  Object.keys(DATA.indicator).forEach(function(code){
-    var ind = DATA.indicator[code];
-    var ys = Y.filter(function(y){ return y>=Math.max(ind.start, view.start); });
-    var isos = ENT.map(function(e){return e.iso;}).filter(function(iso){
-      return pick(ind.values, iso, ys).some(function(v){ return v!==null && v>0; }); });
-    draw("lr_"+code, {
-      grid:{left:56,right:56,top:14,bottom:26,containLabel:true},
-      tooltip: tip({ formatter:function(ps){
-        var s="<b>"+ps[0].axisValue+" 年</b><br/>";
-        ps.filter(function(p){return p.value!==null;})
-          .sort(function(a,b){return b.value-a.value;})
-          .forEach(function(p){ s+=p.marker+" "+p.seriesName+"　<b>"+
-            (p.value>=1000? Math.round(p.value).toLocaleString():r1(p.value))+"</b><br/>"; });
-        return s; }}),
-      xAxis: axis({type:"category", data: ys.map(String),
-        axisLabel:{color:"#8b95a3",fontSize:10,fontFamily:FONT,
-          interval: Math.max(1, Math.floor(ys.length/12))}}),
-      yAxis: axis({type: ind.axis==="log"?"log":"value",
-        name: ind.axis==="log"?"对数刻度":"",
-        nameTextStyle:{color:"#8b95a3",fontSize:11,fontFamily:FONT}}),
-      series: isos.map(function(iso){
-        var e=BY[iso], isCN = iso==="CHN";
-        return { name:e.cn, type:"line", data: pick(ind.values, iso, ys),
-          symbol:"circle", symbolSize:isCN?5:3, showSymbol:false,
-          connectNulls:true, z:isCN?10:3,
-          lineStyle:{ width:isCN?3:1.8, color:e.color, opacity: iso==="TWN"?0.85:1 },
-          itemStyle:{color:e.color},
-          labelLayout:{hideOverlap:true},
-          endLabel:{show:iso==="CHN",formatter:"{a}",color:e.color,fontSize:11,
-            fontWeight:"bold",fontFamily:FONT,distance:6} };
-      })
+  function renderLong() {
+    const host = el('longGrid'); if (!host) return;
+    host.innerHTML = '';
+    Object.keys(DATA.indicator).forEach((code) => {
+      const ind = DATA.indicator[code];
+      const card = document.createElement('div'); card.className = 'card';
+      const t = document.createElement('p'); t.className = 'chartTitle'; t.textContent = ind.label;
+      const n = document.createElement('p'); n.className = 'chartNote';
+      n.textContent = `起始 ${ind.start} 年 · ${ind.axis === 'log' ? '对数纵轴' : '线性纵轴'}`;
+      const box = document.createElement('div'); box.id = `lr_${code}`; box.className = 'chart';
+      card.appendChild(t); card.appendChild(n); card.appendChild(box);
+      host.appendChild(card);
     });
-  });
-}
+    Object.keys(DATA.indicator).forEach((code) => {
+      const ind = DATA.indicator[code];
+      const ys = Y.filter((y) => y >= Math.max(ind.start, view.start));
+      const isos = ENT.map((e) => e.iso).filter((iso) => pick(ind.values, iso, ys).some((v) => v !== null && v > 0));
+      draw(`lr_${code}`, {
+        grid: { left: 56, right: 56, top: 14, bottom: 26, containLabel: true },
+        tooltip: tip({
+          formatter(ps) {
+            let s = `<b>${ps[0].axisValue} 年</b><br/>`;
+            ps.filter((p) => p.value !== null)
+              .sort((a, b) => b.value - a.value)
+              .forEach((p) => {
+                s += `${p.marker} ${p.seriesName}　<b>${
+                  p.value >= 1000 ? Math.round(p.value).toLocaleString() : r1(p.value)}</b><br/>`;
+              });
+            return s;
+          },
+        }),
+        xAxis: axis({
+          type: 'category', data: ys.map(String),
+          axisLabel: {
+            color: '#8b95a3', fontSize: 10, fontFamily: FONT,
+            interval: Math.max(1, Math.floor(ys.length / 12)),
+          },
+        }),
+        yAxis: axis({
+          type: ind.axis === 'log' ? 'log' : 'value',
+          name: ind.axis === 'log' ? '对数刻度' : '',
+          nameTextStyle: { color: '#8b95a3', fontSize: 11, fontFamily: FONT },
+        }),
+        series: isos.map((iso) => {
+          const e = BY[iso];
+          const isCN = iso === 'CHN';
+          return {
+            name: e.cn, type: 'line', data: pick(ind.values, iso, ys),
+            symbol: 'circle', symbolSize: isCN ? 5 : 3, showSymbol: false,
+            connectNulls: true, z: isCN ? 10 : 3,
+            lineStyle: { width: isCN ? 3 : 1.8, color: e.color, opacity: iso === 'TWN' ? 0.85 : 1 },
+            itemStyle: { color: e.color },
+            labelLayout: { hideOverlap: true },
+            endLabel: {
+              show: iso === 'CHN', formatter: '{a}', color: e.color, fontSize: 11,
+              fontWeight: 'bold', fontFamily: FONT, distance: 6,
+            },
+          };
+        }),
+      });
+    });
+  }
 
-/* ============================================================
+  /* ============================================================
    06 敏感性
    ============================================================ */
-function renderSensCN(){
-  var ys = yearsInView();
-  var modes = DATA.modes;
-  var colors = ["#c8102e","#1f6feb","#0f7b4f","#b45309"];
-  draw("cSensCN", {
-    grid: baseGrid(), tooltip: tip({ formatter:function(ps){
-      var s="<b>"+ps[0].axisValue+" 年</b><br/>";
-      ps.forEach(function(p){ if(p.value!==null)
-        s+=p.marker+" "+p.seriesName+"　<b>"+r1(p.value)+"</b><br/>"; });
-      return s; }}),
-    legend:{top:0,left:0,itemWidth:14,itemHeight:9,
-      textStyle:{color:"#5a6472",fontSize:11.5,fontFamily:FONT}},
-    xAxis: axis({type:"category", data:ys.map(String),
-      axisLabel:{color:"#8b95a3",fontSize:11,fontFamily:FONT,
-        interval: view.tick==="1y"?0:(view.tick==="3y"?2:4)}}),
-    yAxis: axis({type:"value", min:20, max:80}),
-    series: modes.map(function(m,i){
-      return { name:m.cn, type:"line", data: pick(DATA.overall[m.id],"CHN",ys),
-        symbol:"none", connectNulls:true,
-        lineStyle:{ width: m.id==="equal"?3.2:2, color:colors[i],
-          type: m.id==="equal"?"solid":"dashed" },
-        itemStyle:{color:colors[i]}, z:10-i };
-    })
-  });
-}
+  function renderSensCN() {
+    const ys = yearsInView();
+    const { modes } = DATA;
+    const colors = ['#c8102e', '#1f6feb', '#0f7b4f', '#b45309'];
+    draw('cSensCN', {
+      grid: baseGrid(), tooltip: tip({
+        formatter(ps) {
+          let s = `<b>${ps[0].axisValue} 年</b><br/>`;
+          ps.forEach((p) => {
+            if (p.value !== null) s += `${p.marker} ${p.seriesName}　<b>${r1(p.value)}</b><br/>`;
+          });
+          return s;
+        },
+      }),
+      legend: {
+        top: 0, left: 0, itemWidth: 14, itemHeight: 9,
+        textStyle: { color: '#5a6472', fontSize: 11.5, fontFamily: FONT },
+      },
+      xAxis: axis({
+        type: 'category', data: ys.map(String),
+        axisLabel: {
+          color: '#8b95a3', fontSize: 11, fontFamily: FONT,
+          interval: view.tick === '1y' ? 0 : (view.tick === '3y' ? 2 : 4),
+        },
+      }),
+      yAxis: axis({ type: 'value', min: 20, max: 80 }),
+      series: modes.map((m, i) => ({
+        name: m.cn, type: 'line', data: pick(DATA.overall[m.id], 'CHN', ys),
+        symbol: 'none', connectNulls: true,
+        lineStyle: {
+          width: m.id === 'equal' ? 3.2 : 2, color: colors[i],
+          type: m.id === 'equal' ? 'solid' : 'dashed',
+        },
+        itemStyle: { color: colors[i] }, z: 10 - i,
+      })),
+    });
+  }
 
-function renderSensRank(){
-  var y = DE;   // 数据年，非面板末年
-  var modes = DATA.modes;
-  var isos = MAIN;
-  var series = modes.map(function(m,i){
-    var vals = isos.map(function(iso){
-      var b = DATA.overall[m.id];
-      return { iso:iso, v: nth(b,iso)? b[iso][YIDX[y]] : null };
-    }).filter(function(o){ return o.v!==null; })
-      .sort(function(a,b){ return b.v-a.v; });
-    var rk={}; vals.forEach(function(o,ix){ rk[o.iso]=ix+1; });
-    return { name:m.cn, type:"bar", data: isos.map(function(iso){ return rk[iso]||null; }),
-      itemStyle:{ color:["#c8102e","#1f6feb","#0f7b4f","#b45309"][i], opacity:.85,
-        borderRadius:[3,3,0,0] } };
-  });
-  draw("cSensRank", {
-    grid:{left:30,right:20,top:44,bottom:40,containLabel:true},
-    tooltip: tip({trigger:"axis",axisPointer:{type:"shadow"}, formatter:function(ps){
-      var s="<b>"+ps[0].axisValue+"</b><br/>";
-      ps.forEach(function(p){ if(p.value!==null) s+=p.marker+" "+p.seriesName+"　第 <b>"+p.value+"</b> 名<br/>"; });
-      return s; }}),
-    legend:{top:0,itemWidth:14,itemHeight:9,textStyle:{color:"#5a6472",fontSize:11,fontFamily:FONT}},
-    xAxis: axis({type:"category", data: isos.map(function(i){return BY[i].cn;}),
-      axisLabel:{color:"#5a6472",fontSize:11,fontFamily:FONT,interval:0,rotate:30}}),
-    yAxis: axis({type:"value", inverse:true, min:1, max:11, name:"名次",
-      nameTextStyle:{color:"#8b95a3",fontSize:11,fontFamily:FONT}}),
-    series: series
-  });
-}
+  function renderSensRank() {
+    const y = DE; // 数据年，非面板末年
+    const { modes } = DATA;
+    const isos = MAIN;
+    const series = modes.map((m, i) => {
+      const vals = isos.map((iso) => {
+        const b = DATA.overall[m.id];
+        return { iso, v: nth(b, iso) ? b[iso][YIDX[y]] : null };
+      }).filter((o) => o.v !== null)
+        .sort((a, b) => b.v - a.v);
+      const rk = {}; vals.forEach((o, ix) => { rk[o.iso] = ix + 1; });
+      return {
+        name: m.cn, type: 'bar', data: isos.map((iso) => rk[iso] || null),
+        itemStyle: {
+          color: ['#c8102e', '#1f6feb', '#0f7b4f', '#b45309'][i], opacity: 0.85,
+          borderRadius: [3, 3, 0, 0],
+        },
+      };
+    });
+    draw('cSensRank', {
+      grid: { left: 30, right: 20, top: 44, bottom: 40, containLabel: true },
+      tooltip: tip({
+        trigger: 'axis', axisPointer: { type: 'shadow' }, formatter(ps) {
+          let s = `<b>${ps[0].axisValue}</b><br/>`;
+          ps.forEach((p) => { if (p.value !== null) s += `${p.marker} ${p.seriesName}　第 <b>${p.value}</b> 名<br/>`; });
+          return s;
+        },
+      }),
+      legend: { top: 0, itemWidth: 14, itemHeight: 9, textStyle: { color: '#5a6472', fontSize: 11, fontFamily: FONT } },
+      xAxis: axis({
+        type: 'category', data: isos.map((i) => BY[i].cn),
+        axisLabel: { color: '#5a6472', fontSize: 11, fontFamily: FONT, interval: 0, rotate: 30 },
+      }),
+      yAxis: axis({
+        type: 'value', inverse: true, min: 1, max: 11, name: '名次',
+        nameTextStyle: { color: '#8b95a3', fontSize: 11, fontFamily: FONT },
+      }),
+      series,
+    });
+  }
 
-function renderSensInst(){
+  function renderSensInst() {
   // 这张图原先对比「等权」与「仅硬数据」，后者会把该领域的评价性指数
   // 全部剔除、只剩几项，那不是同一测量（已作废该结论）。现改为呈现**构成本质**。
   //
   // 项数一律从 DATA.institutions.note 取，不写死——这里曾写死「19 项里 17 项、
   // 仅 2 项」，而该领域后来变成 20 项评分 / 17 项评价 / 3 项结构项，
   // 那段文字就成了错的（用户发现）。数字写死在图表标题里，没人会去核。
-  var N = (DATA.institutions.note) || {};
-  var nAll = N.n_scored || N.n_all, nEval = N.n_eval, nFact = N.n_fact;
-  // 读 DATA.institutions.values（export 直接放在 institutions.values 上，不在 .obj 下）。
-  // 之前读 .obj 永远 undefined，图表 early-return，整片空白。
-  var O = DATA.institutions, eq = DATA.domain.equal[DATA.institutions.domain];
-  if(!O || !O.values || !Object.keys(O.values||{}).length || !eq){ return; }
-  var y = DE;
-  var rows = ENT.filter(function(e){ return e.main; }).map(function(e){
-    return { iso:e.iso, cn:e.cn,
-             full: pick(eq, e.iso, [y])[0],
-             obj:  pick(O.values, e.iso, [y])[0] };
-  }).filter(function(r){ return r.full !== null || r.obj !== null; });
-  rows.sort(function(a,b){ return (b.full||0) - (a.full||0); });
-  draw("cSensInst", {
-    grid:{ left:76, right:60, top:44, bottom:34, containLabel:true },
-    tooltip: tip({ trigger:"axis", axisPointer:{type:"shadow"}, formatter:function(ps){
-      var r = rows[ps[0].dataIndex];
-      return "<b>"+r.cn+"</b>（"+y+" 年）<br/>"
-        + "进评分的 "+nAll+" 项（等权）　<b>"+r1(r.full)+"</b><br/>"
-        + "其中 "+nFact+" 项制度结构项　<b>"+r1(r.obj)+"</b><br/>"
+    const N = (DATA.institutions.note) || {};
+    const nAll = N.n_scored || N.n_all;
+    const nFact = N.n_fact;
+    // 读 DATA.institutions.values（export 直接放在 institutions.values 上，不在 .obj 下）。
+    // 之前读 .obj 永远 undefined，图表 early-return，整片空白。
+    const O = DATA.institutions;
+    const eq = DATA.domain.equal[DATA.institutions.domain];
+    if (!O || !O.values || !Object.keys(O.values || {}).length || !eq) { return; }
+    const y = DE;
+    const rows = ENT.filter((e) => e.main).map((e) => ({
+      iso: e.iso, cn: e.cn,
+      full: pick(eq, e.iso, [y])[0],
+      obj: pick(O.values, e.iso, [y])[0],
+    })).filter((r) => r.full !== null || r.obj !== null);
+    rows.sort((a, b) => (b.full || 0) - (a.full || 0));
+    draw('cSensInst', {
+      grid: { left: 76, right: 60, top: 44, bottom: 34, containLabel: true },
+      tooltip: tip({
+        trigger: 'axis', axisPointer: { type: 'shadow' }, formatter(ps) {
+          const r = rows[ps[0].dataIndex];
+          return `<b>${r.cn}</b>（${y} 年）<br/>`
+        + `进评分的 ${nAll} 项（等权）　<b>${r1(r.full)}</b><br/>`
+        + `其中 ${nFact} 项制度结构项　<b>${r1(r.obj)}</b><br/>`
         + '<span style="color:#8b95a3">后者不是该领域的替代口径</span>';
-    }}),
-    legend:{ top:0, left:0, itemWidth:14, itemHeight:9,
-      textStyle:{ color:"#5a6472", fontSize:11.5, fontFamily:FONT } },
-    xAxis: axis({ type:"value", min:0, max:100,
-      axisLabel:{ color:"#8b95a3", fontSize:10.5, fontFamily:FONT } }),
-    yAxis: axis({ type:"category", inverse:true,
-      data: rows.map(function(r){ return r.cn; }),
-      axisLabel:{ color:"#5a6472", fontSize:11, fontFamily:FONT } }),
-    series:[
-      { name:"进评分的 "+nAll+" 项（等权口径）", type:"bar", barWidth:11,
-        data: rows.map(function(r){ return r.full; }),
-        itemStyle:{ color:"#94a3b8" },
-        label:{ show:true, position:"right", color:"#5a6472", fontSize:10.5,
-                fontFamily:FONT, formatter:function(p){ return r1(p.value); } } },
-      { name:"其中 "+nFact+" 项制度结构项", type:"bar", barWidth:11,
-        data: rows.map(function(r){ return r.obj; }),
-        itemStyle:{ color:"#0b6b8f" },
-        label:{ show:true, position:"right", color:"#0b6b8f", fontSize:10.5,
-                fontFamily:FONT, formatter:function(p){ return r1(p.value); } } }
-    ]
-  });
-}
+        },
+      }),
+      legend: {
+        top: 0, left: 0, itemWidth: 14, itemHeight: 9,
+        textStyle: { color: '#5a6472', fontSize: 11.5, fontFamily: FONT },
+      },
+      xAxis: axis({
+        type: 'value', min: 0, max: 100,
+        axisLabel: { color: '#8b95a3', fontSize: 10.5, fontFamily: FONT },
+      }),
+      yAxis: axis({
+        type: 'category', inverse: true,
+        data: rows.map((r) => r.cn),
+        axisLabel: { color: '#5a6472', fontSize: 11, fontFamily: FONT },
+      }),
+      series: [
+        {
+          name: `进评分的 ${nAll} 项（等权口径）`, type: 'bar', barWidth: 11,
+          data: rows.map((r) => r.full),
+          itemStyle: { color: '#94a3b8' },
+          label: {
+            show: true, position: 'right', color: '#5a6472', fontSize: 10.5,
+            fontFamily: FONT, formatter(p) { return r1(p.value); },
+          },
+        },
+        {
+          name: `其中 ${nFact} 项制度结构项`, type: 'bar', barWidth: 11,
+          data: rows.map((r) => r.obj),
+          itemStyle: { color: '#0b6b8f' },
+          label: {
+            show: true, position: 'right', color: '#0b6b8f', fontSize: 10.5,
+            fontFamily: FONT, formatter(p) { return r1(p.value); },
+          },
+        },
+      ],
+    });
+  }
 
-/* ============================================================
+  /* ============================================================
    制度领域指标清单
    ============================================================ */
-function renderInstList(){
-  var host = el("instList");
-  if(!host || !DATA.institutions.list) return;
-  // 三类：评价性 / 制度结构项 / 投入类。此前只分两类，「非评价」混着
-  // 结构项与投入类，标题「客观统计量 5 项」与图表「另 3 项结构项」对不上。
-  var ev = DATA.institutions.list.filter(function(x){ return x.kind==="eval"; });
-  var st = DATA.institutions.list.filter(function(x){ return x.kind==="struct"; });
-  var in_ = DATA.institutions.list.filter(function(x){ return x.kind==="input"; });
-  function item(x, tag){
-    var cls = x.kind==="eval" ? "e" : (x.kind==="struct" ? "o" : "i");
-    var lab = x.kind==="eval" ? "评价" : (x.kind==="struct" ? "结构" : "投入");
-    return '<div class="it"><span class="mk '+cls+'">'+lab+'</span><span>'+x.cn
+  function renderInstList() {
+    const host = el('instList');
+    if (!host || !DATA.institutions.list) return;
+    // 三类：评价性 / 制度结构项 / 投入类。此前只分两类，「非评价」混着
+    // 结构项与投入类，标题「客观统计量 5 项」与图表「另 3 项结构项」对不上。
+    const ev = DATA.institutions.list.filter((x) => x.kind === 'eval');
+    const st = DATA.institutions.list.filter((x) => x.kind === 'struct');
+    const inside = DATA.institutions.list.filter((x) => x.kind === 'input');
+    function item(x) {
+      const cls = x.kind === 'eval' ? 'e' : (x.kind === 'struct' ? 'o' : 'i');
+      const lab = x.kind === 'eval' ? '评价' : (x.kind === 'struct' ? '结构' : '投入');
+      return `<div class="it"><span class="mk ${cls}">${lab}</span><span>${x.cn
       // 与指标清单同口径：受限来源打码，作者按组合键可显示。
       // 这里此前直接输出 x.src，是遮罩的漏点（制度构成区块在页面上照样写着
       // Freedom House/QoG、V-Dem/QoG 等）。
-      + '<span style="color:#a3adba">　'+srcCell(x.src)+'</span></span></div>';
+      }<span style="color:#a3adba">　${srcCell(x.src)}</span></span></div>`;
+    }
+    host.innerHTML = `<div class="hd">评价性指数（${ev.length} 项）——由研究机构按各自指标体系判断赋值</div>${
+      ev.map((x) => item(x)).join('')
+    }<div class="hd">制度结构项（${st.length} 项）——依宪法、选举法与官方记录编码，可独立复核</div>${
+      st.map((x) => item(x)).join('')
+    }<div class="hd">投入类（${inside.length} 项）——单列展示，不进评分</div>${
+      inside.map((x) => item(x)).join('')}`;
   }
-  host.innerHTML =
-    '<div class="hd">评价性指数（'+ev.length+' 项）——由研究机构按各自指标体系判断赋值</div>'
-    + ev.map(function(x){return item(x);}).join("")
-    + '<div class="hd">制度结构项（'+st.length+' 项）——依宪法、选举法与官方记录编码，可独立复核</div>'
-    + st.map(function(x){return item(x);}).join("")
-    + '<div class="hd">投入类（'+in_.length+' 项）——单列展示，不进评分</div>'
-    + in_.map(function(x){return item(x);}).join("");
-}
 
-/* ============================================================
+  /* ============================================================
    核心发现卡片（由 Python 注入 FINDINGS）
    ============================================================ */
-function renderFindings(){
+  function renderFindings() {
   // 按 group 分派：
   //   finding → #findings      核心发现（数据说明了什么）
   //   caveat  → #caveats       读数须知（这些数字能信到什么程度）
   // 两者混在一栏时，读者会把口径警告当成又一个结论略过去。
-  var fh = el("findings"), ch = el("caveats");
-  if(fh) fh.innerHTML="";
-  if(ch) ch.innerHTML="";
-  (window.FINDINGS||[]).forEach(function(f){
-    var host = (f.group==="caveat") ? ch : fh;
-    if(!host) return;
-    var d=document.createElement("div");
-    d.className="finding"+(f.tone?" "+f.tone:"");
-    // 标题行文字长 → 跨两列。auto-fit 只管列数，不管单卡跨列。
-    // 按**显示宽度**判，不能数字符数：中日韩字约两倍宽，
-    // 「PPP 第 1 · 名义第 2」15 字符却都是窄字符，不该跨列。
-    var _vtxt = String(f.v||""), _w = 0;
-    for(var _i=0; _i<_vtxt.length; _i++){
-      _w += /[\u3000-\u9fff\uff00-\uffef]/.test(_vtxt.charAt(_i)) ? 2 : 1;
-    }
-    if(_w > 22 && _vtxt.indexOf(" · ") >= 0){ d.className += " wide"; }
-    if(f.id){ d.id = f.id; }
-    // v 为空时不渲染——否则 .v 的 25px 行高会留下一道空档
-    d.innerHTML = '<div class="k">'+f.k+'</div>'
-                + (f.v ? '<div class="v">'+f.v+'</div>' : '')
-                + '<div class="d">'+f.d+'</div>';
-    host.appendChild(d);
-  });
-}
+    const fh = el('findings');
+    const ch = el('caveats');
+    if (fh) fh.innerHTML = '';
+    if (ch) ch.innerHTML = '';
+    (window.FINDINGS || []).forEach((f) => {
+      const host = (f.group === 'caveat') ? ch : fh;
+      if (!host) return;
+      const d = document.createElement('div');
+      d.className = `finding${f.tone ? ` ${f.tone}` : ''}`;
+      // 标题行文字长 → 跨两列。auto-fit 只管列数，不管单卡跨列。
+      // 按**显示宽度**判，不能数字符数：中日韩字约两倍宽，
+      // 「PPP 第 1 · 名义第 2」15 字符却都是窄字符，不该跨列。
+      const vtxt = String(f.v || '');
+      let w = 0;
+      for (let i = 0; i < vtxt.length; i += 1) {
+        w += /[\u3000-\u9fff\uff00-\uffef]/.test(vtxt.charAt(i)) ? 2 : 1;
+      }
+      if (w > 22 && vtxt.indexOf(' · ') >= 0) { d.className += ' wide'; }
+      if (f.id) { d.id = f.id; }
+      // v 为空时不渲染——否则 .v 的 25px 行高会留下一道空档
+      d.innerHTML = `<div class="k">${f.k}</div>${
+        f.v ? `<div class="v">${f.v}</div>` : ''
+      }<div class="d">${f.d}</div>`;
+      host.appendChild(d);
+    });
+  }
 
-/* ============================================================
+  /* ============================================================
    关键节点对照表
    ============================================================ */
-function renderEventTable(){
-  var tb = el("tblEvents") ? el("tblEvents").querySelector("tbody") : null;
-  if(!tb) return;
-  var rows = DATA.event_table || [];
-  var tot=0, ok=0, bad=0, neu=0;
-  var SIGN_NAME = { pos:"正向", neg:"负向", neutral:"中性" };
-  var html = rows.map(function(r){
-    var col = SIGN_COLOR[r.sign] || "#8b95a3";
-    var det = r.detail.map(function(d){
-      tot++;
-      var mark, cls;
-      if(d.match === true){ mark = "↑吻合"; cls = "y"; ok++; }
-      else if(d.match === false){ mark = "≠不符"; cls = "w"; bad++; }
-      else { mark = "—"; cls = "n"; neu++; }
-      var arrow = d.delta > 1 ? "↑" : (d.delta < -1 ? "↓" : "→");
-      return '<div style="margin:1px 0">'+
-        '<span class="pill '+cls+'" style="margin-right:4px">'+mark+'</span>'+
-        d.dom+' '+d.before+'→'+d.after+' '+arrow+' <b>'+
-        (d.delta>=0?"+":"")+d.delta+'</b></div>';
-    }).join("");
-    var v = function(x){ return (x===null||x===undefined) ? "—" : x; };
-    var netTxt = v(r.net);
-    var netCol = (r.net===null) ? "#8b95a3" : (r.net>0?"#0f7b4f":(r.net<0?"#b45309":"#8b95a3"));
-    return "<tr>"+
-      "<td><b>"+r.span+"</b></td>"+
-      "<td>"+r.name+"<br/><span style='color:#8b95a3;font-size:11.5px'>"+
-        (r.scope==="cn"?"中国特定":"全球性")+"</span></td>"+
-      "<td><span class='pill' style='background:"+col+"22;color:"+col+"'>"+
-        SIGN_NAME[r.sign]+"</span></td>"+
-      "<td style='font-size:12px;color:#8b95a3'>"+r.window+"</td>"+
-      "<td class='num'>"+v(r.before)+"</td>"+
-      "<td class='num'>"+v(r.ext)+"</td>"+
-      "<td class='num'>"+v(r.after)+"</td>"+
-      "<td class='num' style='color:"+netCol+";font-weight:700'>"+
-        (r.net!==null && r.net>0?"+":"")+netTxt+"</td>"+
-      "<td style='font-size:12px'>"+(det||"—")+"</td></tr>";
-  }).join("");
-  tb.innerHTML = html;
-  if(el("eventStats")){
-    var judged = ok + bad;
-    el("eventStats").innerHTML = "共 "+rows.length+" 个事件、" + tot +
-      " 条领域映射：其中可判方向 "+judged+" 条 —— "+
-      "<b style='color:#0f7b4f'>吻合 "+ok+" 条（"+Math.round(ok/judged*100)+"%）</b>、"+
-      "<b style='color:#b45309'>不符 "+bad+" 条（"+Math.round(bad/judged*100)+"%）</b>；"+
-      "另有 "+neu+" 条为中性事件、不判方向。"+
-      "<br><b>不符不等于数据错误</b>——多数是「事件的全球性质」与「对中国的实际影响」不一致，"+
-      "例如石油危机、全球金融危机、COVID-19 对中国均未呈负向。";
+  function renderEventTable() {
+    const tb = el('tblEvents') ? el('tblEvents').querySelector('tbody') : null;
+    if (!tb) return;
+    const rows = DATA.event_table || [];
+    let tot = 0; let ok = 0; let bad = 0;
+    let neu = 0;
+    const SIGN_NAME = { pos: '正向', neg: '负向', neutral: '中性' };
+    const html = rows.map((r) => {
+      const col = SIGN_COLOR[r.sign] || '#8b95a3';
+      const det = r.detail.map((d) => {
+        tot++;
+        let mark;
+        let cls;
+        if (d.match === true) { mark = '↑吻合'; cls = 'y'; ok++; } else if (d.match === false) { mark = '≠不符'; cls = 'w'; bad++; } else { mark = '—'; cls = 'n'; neu++; }
+        const arrow = d.delta > 1 ? '↑' : (d.delta < -1 ? '↓' : '→');
+        return '<div style="margin:1px 0">'
+        + `<span class="pill ${cls}" style="margin-right:4px">${mark}</span>${
+          d.dom} ${d.before}→${d.after} ${arrow} <b>${
+          d.delta >= 0 ? '+' : ''}${d.delta}</b></div>`;
+      }).join('');
+      const v = function (x) { return (x === null || x === undefined) ? '—' : x; };
+      const netTxt = v(r.net);
+      const netCol = (r.net === null) ? '#8b95a3' : (r.net > 0 ? '#0f7b4f' : (r.net < 0 ? '#b45309' : '#8b95a3'));
+      return '<tr>'
+      + `<td><b>${r.span}</b></td>`
+      + `<td>${r.name}<br/><span style='color:#8b95a3;font-size:11.5px'>${
+        r.scope === 'cn' ? '中国特定' : '全球性'}</span></td>`
+      + `<td><span class='pill' style='background:${col}22;color:${col}'>${
+        SIGN_NAME[r.sign]}</span></td>`
+      + `<td style='font-size:12px;color:#8b95a3'>${r.window}</td>`
+      + `<td class='num'>${v(r.before)}</td>`
+      + `<td class='num'>${v(r.ext)}</td>`
+      + `<td class='num'>${v(r.after)}</td>`
+      + `<td class='num' style='color:${netCol};font-weight:700'>${
+        r.net !== null && r.net > 0 ? '+' : ''}${netTxt}</td>`
+      + `<td style='font-size:12px'>${det || '—'}</td></tr>`;
+    }).join('');
+    tb.innerHTML = html;
+    if (el('eventStats')) {
+      const judged = ok + bad;
+      el('eventStats').innerHTML = `共 ${rows.length} 个事件、${tot
+      } 条领域映射：其中可判方向 ${judged} 条 —— `
+      + `<b style='color:#0f7b4f'>吻合 ${ok} 条（${Math.round(ok / judged * 100)}%）</b>、`
+      + `<b style='color:#b45309'>不符 ${bad} 条（${Math.round(bad / judged * 100)}%）</b>；`
+      + `另有 ${neu} 条为中性事件、不判方向。`
+      + '<br><b>不符不等于数据错误</b>——多数是「事件的全球性质」与「对中国的实际影响」不一致，'
+      + '例如石油危机、全球金融危机、COVID-19 对中国均未呈负向。';
+    }
+    const host = el('eventNotes');
+    if (host) {
+      host.innerHTML = rows.map((r) => `<div class="note ${r.counter ? 'warn' : 'info'}" style="margin:8px 0">`
+        + `<b>${r.span}　${r.name}</b><br/>${r.note}</div>`).join('');
+    }
   }
-  var host = el("eventNotes");
-  if(host){
-    host.innerHTML = rows.map(function(r){
-      return '<div class="note '+(r.counter?"warn":"info")+'" style="margin:8px 0">'+
-        '<b>'+r.span+'　'+r.name+'</b><br/>'+r.note+'</div>';
-    }).join("");
-  }
-}
 
-/* ============================================================
+  /* ============================================================
    数据溯源表
    ============================================================ */
-/* 受限来源默认不展示「禁止再分发」类来源的名称，作者按组合键可显示。
+  /* 受限来源默认不展示「禁止再分发」类来源的名称，作者按组合键可显示。
    内容都在页面里（只是 CSS 隐藏），所以不需要重新构建就能看到。
    名单与按键都在 catalog 里配置，经 report_data.json 的 meta 传下来。 */
-function hiddenSrc(s){
-  var h = (DATA.meta || {}).hidden_sources || [];
-  return h.indexOf(s) >= 0;
-}
-function srcCell(src){
-  if(!hiddenSrc(src)) return src;
-  return "<span class='srcmask'>—</span><span class='rsrc-inline'>" + src + "</span>";
-}
-
-/* 同时按住三个键 → 显示/再按一次隐藏。
-   用 _armed 防止按住不放时反复触发（keydown 会连续派发）。 */
-function bindReveal(){
-  var keys = ((DATA.meta || {}).reveal_keys) || [];
-  if(!keys.length) return;
-  var down = {}, armed = false;
-  document.addEventListener("keydown", function(e){
-    down[(e.key || "").toLowerCase()] = true;
-    var all = keys.every(function(k){ return down[k]; });
-    if(all && !armed){
-      armed = true;
-      document.body.classList.toggle("reveal");
-    }
-  });
-  document.addEventListener("keyup", function(e){
-    down[(e.key || "").toLowerCase()] = false;
-    if(!keys.every(function(k){ return down[k]; })) armed = false;
-  });
-}
-
-function renderCatalog(){
-  var tb = el("tblCat") ? el("tblCat").querySelector("tbody") : null;
-  if(!tb) return;
-  var sel = el("catDomain");
-  var doms = {};
-  DATA.catalog.forEach(function(r){ doms[r.domain] = r.domain_cn; });
-  // 选项只建一次。此前每次 renderCatalog 都重建 <select>，重建会把
-  // sel.value 重置回第一个选项——于是「选中某领域」的瞬间选择就被抹掉，
-  // 筛选框看起来完全无效（用户发现）。用 data-filled 标记只填一次。
-  if(sel && !sel.dataset.filled){
-    sel.innerHTML = '<option value="">全部领域</option>';
-    Object.keys(doms).sort().forEach(function(k){
-      var o=document.createElement("option"); o.value=k;
-      o.textContent = doms[k]; sel.appendChild(o);   // 只显示领域名；编号留在 value 里（内部）
-    });
-    sel.onchange = renderCatalog;
-    sel.dataset.filled = "1";
+  function hiddenSrc(s) {
+    const h = (DATA.meta || {}).hidden_sources || [];
+    return h.indexOf(s) >= 0;
   }
-  var q = el("catSearch") ? el("catSearch").value.trim().toLowerCase() : "";
-  var df = sel ? sel.value : "";
-  var rows = DATA.catalog.filter(function(r){
-    if(df && r.domain!==df) return false;
-    if(!q) return true;
-    return (r.name+r.code+r.src+r.note).toLowerCase().indexOf(q)>=0;
-  });
-  var html = rows.map(function(r){
-    var ms = Math.round(r.measured_share*100);
-    var cls = ms>=80?"y":(ms>=50?"w":"n");
-    // 领域用简称（全名放 title）——全名在窄列里要折三行，而这一列只是分类标签
-    // 说明限两行并截断，全文放 title——109/116 项有说明，最长 173 字，
-    // 全展开会把每行撑到 8 个行盒、整表超过一万像素
-    return "<tr><td class='dom' title='"+r.domain_cn+"'>"+(r.domain_short||r.domain_cn)+"</td>"+
-      "<td><b>"+r.name+"</b> <span class='code'>"+r.code+"</span>"+
-      (r.note?"<div class='notecell' title='"+r.note+"'>"+r.note+"</div>":"")+
-      "</td><td>"+srcCell(r.src)+"</td><td>"+r.unit+"</td>"+
-      "<td class='dir'>"+r.direction+"</td>"+
-      "<td class='c'>"+r.ymin+"</td><td class='c'>"+r.ymax+"</td>"+
-      "<td class='c'>"+r.n_ent+"</td>"+
-      "<td class='c'><span class='pill "+cls+"'>"+ms+"%</span></td>"+
-      "<td class='c'>"+(r.has_twn?"<span class='pill y'>有</span>":"<span class='pill n'>无</span>")+"</td></tr>";
-  }).join("");
-  tb.innerHTML = html;
-  if(el("catShown")) el("catShown").textContent = rows.length;
-  if(el("catN")) el("catN").textContent = DATA.catalog.length;
-  if(el("catN2")) el("catN2").textContent = DATA.catalog.length;
-}
-function bindCatalog(){
-  var s = el("catSearch");
-  if(s) s.addEventListener("input", renderCatalog);
-}
+  function srcCell(src) {
+    if (!hiddenSrc(src)) return src;
+    return `<span class='srcmask'>—</span><span class='rsrc-inline'>${src}</span>`;
+  }
 
-/* ============================================================
+  /* 同时按住三个键 → 显示/再按一次隐藏。
+   用 _armed 防止按住不放时反复触发（keydown 会连续派发）。 */
+  function bindReveal() {
+    const keys = ((DATA.meta || {}).reveal_keys) || [];
+    if (!keys.length) return;
+    const down = {};
+    let armed = false;
+    document.addEventListener('keydown', (e) => {
+      down[(e.key || '').toLowerCase()] = true;
+      const all = keys.every((k) => down[k]);
+      if (all && !armed) {
+        armed = true;
+        document.body.classList.toggle('reveal');
+      }
+    });
+    document.addEventListener('keyup', (e) => {
+      down[(e.key || '').toLowerCase()] = false;
+      if (!keys.every((k) => down[k])) armed = false;
+    });
+  }
+
+  function renderCatalog() {
+    const tb = el('tblCat') ? el('tblCat').querySelector('tbody') : null;
+    if (!tb) return;
+    const sel = el('catDomain');
+    const doms = {};
+    DATA.catalog.forEach((r) => { doms[r.domain] = r.domainsidecn; });
+    // 选项只建一次。此前每次 renderCatalog 都重建 <select>，重建会把
+    // sel.value 重置回第一个选项——于是「选中某领域」的瞬间选择就被抹掉，
+    // 筛选框看起来完全无效（用户发现）。用 data-filled 标记只填一次。
+    if (sel && !sel.dataset.filled) {
+      sel.innerHTML = '<option value="">全部领域</option>';
+      Object.keys(doms).sort().forEach((k) => {
+        const o = document.createElement('option'); o.value = k;
+        o.textContent = doms[k]; sel.appendChild(o); // 只显示领域名；编号留在 value 里（内部）
+      });
+      sel.onchange = renderCatalog;
+      sel.dataset.filled = '1';
+    }
+    const q = el('catSearch') ? el('catSearch').value.trim().toLowerCase() : '';
+    const df = sel ? sel.value : '';
+    const rows = DATA.catalog.filter((r) => {
+      if (df && r.domain !== df) return false;
+      if (!q) return true;
+      return (r.name + r.code + r.src + r.note).toLowerCase().indexOf(q) >= 0;
+    });
+    const html = rows.map((r) => {
+      const ms = Math.round(r.measured_share * 100);
+      const cls = ms >= 80 ? 'y' : (ms >= 50 ? 'w' : 'n');
+      // 领域用简称（全名放 title）——全名在窄列里要折三行，而这一列只是分类标签
+      // 说明限两行并截断，全文放 title——109/116 项有说明，最长 173 字，
+      // 全展开会把每行撑到 8 个行盒、整表超过一万像素
+      return `<tr><td class='dom' title='${r.domainsidecn}'>${r.domainsideshort || r.domainsidecn}</td>`
+      + `<td><b>${r.name}</b> <span class='code'>${r.code}</span>${
+        r.note ? `<div class='notecell' title='${r.note}'>${r.note}</div>` : ''
+      }</td><td>${srcCell(r.src)}</td><td>${r.unit}</td>`
+      + `<td class='dir'>${r.direction}</td>`
+      + `<td class='c'>${r.ymin}</td><td class='c'>${r.ymax}</td>`
+      + `<td class='c'>${r.n_ent}</td>`
+      + `<td class='c'><span class='pill ${cls}'>${ms}%</span></td>`
+      + `<td class='c'>${r.has_twn ? "<span class='pill y'>有</span>" : "<span class='pill n'>无</span>"}</td></tr>`;
+    }).join('');
+    tb.innerHTML = html;
+    if (el('catShown')) el('catShown').textContent = rows.length;
+    if (el('catN')) el('catN').textContent = DATA.catalog.length;
+    if (el('catN2')) el('catN2').textContent = DATA.catalog.length;
+  }
+  function bindCatalog() {
+    const s = el('catSearch');
+    if (s) s.addEventListener('input', renderCatalog);
+  }
+
+  /* ============================================================
    领域结构表
    ============================================================ */
-window.__DOMTIPS = window.__DOMTIPS || {};
+  window.__DOMTIPS = window.__DOMTIPS || {};
 
-/* 7.1 表「纳入指标数」的悬停名单。
+  /* 7.1 表「纳入指标数」的悬停名单。
    用自绘提示框而不是原生 title：原生那种黄底小框与页面上 ECharts 的白底
    提示框风格不一致（用户指出，要求与「综合评分轨迹」等图表一致）。
    样式定义在 template.html 的 .hoverTip，配色逐值照抄 tip()。 */
-function bindCountTips(tb){
-  var box = el("hoverTip");
-  if(!box){
-    box = document.createElement("div");
-    box.id = "hoverTip"; box.className = "hoverTip";
-    document.body.appendChild(box);
-  }
-  function move(e){
-    var w = box.offsetWidth, h = box.offsetHeight;
-    var x = e.clientX + 14, y = e.clientY + 16;
-    if(x + w > window.innerWidth - 8) x = e.clientX - w - 14;
-    if(y + h > window.innerHeight - 8) y = e.clientY - h - 12;
-    box.style.left = Math.max(6, x) + "px"; box.style.top = Math.max(6, y) + "px";
-  }
-  tb.querySelectorAll(".cntTip").forEach(function(sp){
-    sp.addEventListener("mouseenter", function(e){
-      box.innerHTML = window.__DOMTIPS[sp.getAttribute("data-dom")] || "";
-      box.style.display = "block"; move(e);
+  function bindCountTips(tb) {
+    let box = el('hoverTip');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'hoverTip'; box.className = 'hoverTip';
+      document.body.appendChild(box);
+    }
+    function move(e) {
+      const w = box.offsetWidth;
+      const h = box.offsetHeight;
+      let x = e.clientX + 14;
+      let y = e.clientY + 16;
+      if (x + w > window.innerWidth - 8) x = e.clientX - w - 14;
+      if (y + h > window.innerHeight - 8) y = e.clientY - h - 12;
+      box.style.left = `${Math.max(6, x)}px`; box.style.top = `${Math.max(6, y)}px`;
+    }
+    tb.querySelectorAll('.cntTip').forEach((sp) => {
+      sp.addEventListener('mouseenter', (e) => {
+        box.innerHTML = window.__DOMTIPS[sp.getAttribute('data-dom')] || '';
+        box.style.display = 'block'; move(e);
+      });
+      sp.addEventListener('mousemove', move);
+      sp.addEventListener('mouseleave', () => { box.style.display = 'none'; });
     });
-    sp.addEventListener("mousemove", move);
-    sp.addEventListener("mouseleave", function(){ box.style.display = "none"; });
-  });
-}
+  }
 
-function renderDomainTable(){
-  var tb = el("tblDomains") ? el("tblDomains").querySelector("tbody") : null;
-  if(!tb) return;
-  // 大类列用 rowspan 合并——同一大类的领域连着排，逐行重复写一遍是噪声，
-  // 读者还要自己比对相邻两行是否相同。先统计每类的行数，再只在首行输出。
-  var catCount = {};
-  DATA.domains.forEach(function(d){ catCount[d.cat] = (catCount[d.cat]||0) + 1; });
-  var seen = {};
-  var html = DATA.domains.map(function(d){
+  function renderDomainTable() {
+    const tb = el('tblDomains') ? el('tblDomains').querySelector('tbody') : null;
+    if (!tb) return;
+    // 大类列用 rowspan 合并——同一大类的领域连着排，逐行重复写一遍是噪声，
+    // 读者还要自己比对相邻两行是否相同。先统计每类的行数，再只在首行输出。
+    const catCount = {};
+    DATA.domains.forEach((d) => { catCount[d.cat] = (catCount[d.cat] || 0) + 1; });
+    const seen = {};
+    const html = DATA.domains.map((d) => {
     // 全表三列都只描述**纳入评分**的指标，口径一致：
     // 此前「纳入指标数」用的是该领域全部 catalog 行数，把投入类（税收、军费…）
     // 与仅参照项（GDP、人口、国土面积…）也算了进来，于是偏大（用户发现）。
-    var rs = DATA.catalog.filter(function(r){ return r.domain===d.id; });
-    var sc = rs.filter(function(r){ return r.scored; });
-    var ymin = sc.length? Math.min.apply(null, sc.map(function(r){return r.ymin;})) : "—";
-    var twn = sc.some(function(r){ return r.has_twn; });
-    var catCell = "";
-    if(!seen[d.cat]){
-      seen[d.cat] = 1;
-      catCell = "<td class='cat' rowspan='"+catCount[d.cat]+"'>"+d.cat+"</td>";
-    }
-    // 「纳入指标数」= 进评分的指标数，不含投入类与仅参照项。
-    // 鼠标悬停显示名称列表（title 里的换行会原样显示）。
-    // 名单存到全局表里，由 data-dom 关联——避免把名字塞进 HTML 属性
-    // （指标名里可能带引号，属性转义容易出错）。
-    window.__DOMTIPS[d.id] = "<div class='hd'>" + d.cn + "　纳入评分 " + sc.length + " 项</div>"
-      + "<div class='nm'>" + sc.map(function(r){ return r.name; }).join("<br>") + "</div>";
-    return "<tr>"+catCell+"<td><b>"+d.cn+"</b></td>"+
-      "<td class='c'><span class='cntTip' data-dom='"+d.id+"'>"
-      + sc.length + "</span></td><td class='c'>"+ymin+"</td>"+
-      "<td class='c'>"+(twn?"<span class='pill y'>部分有</span>":"<span class='pill n'>无</span>")+"</td></tr>";
-  }).join("");
-  tb.innerHTML = html;
-  bindCountTips(tb);
-}
+      const rs = DATA.catalog.filter((r) => r.domain === d.id);
+      const sc = rs.filter((r) => r.scored);
+      const ymin = sc.length ? Math.min.apply(null, sc.map((r) => r.ymin)) : '—';
+      const twn = sc.some((r) => r.has_twn);
+      let catCell = '';
+      if (!seen[d.cat]) {
+        seen[d.cat] = 1;
+        catCell = `<td class='cat' rowspan='${catCount[d.cat]}'>${d.cat}</td>`;
+      }
+      // 「纳入指标数」= 进评分的指标数，不含投入类与仅参照项。
+      // 鼠标悬停显示名称列表（title 里的换行会原样显示）。
+      // 名单存到全局表里，由 data-dom 关联——避免把名字塞进 HTML 属性
+      // （指标名里可能带引号，属性转义容易出错）。
+      window.__DOMTIPS[d.id] = `<div class='hd'>${d.cn}　纳入评分 ${sc.length} 项</div>`
+      + `<div class='nm'>${sc.map((r) => r.name).join('<br>')}</div>`;
+      return `<tr>${catCell}<td><b>${d.cn}</b></td>`
+      + `<td class='c'><span class='cntTip' data-dom='${d.id}'>${
+        sc.length}</span></td><td class='c'>${ymin}</td>`
+      + `<td class='c'>${twn ? "<span class='pill y'>部分有</span>" : "<span class='pill n'>无</span>"}</td></tr>`;
+    }).join('');
+    tb.innerHTML = html;
+    bindCountTips(tb);
+  }
 
-/* ============================================================
+  /* ============================================================
    注入的统计文字
    ============================================================ */
-function renderStats(){
-  var s = window.STATS || {};
-  if(el("confMeas")) el("confMeas").textContent = s.conf_measured || "—";
-  if(el("confEst"))  el("confEst").textContent  = s.conf_estimated || "—";
-  if(el("confInf"))  el("confInf").textContent  = s.conf_inferred || "—";
-  if(el("twnCovN"))  el("twnCovN").textContent  = s.twn_indicators || "—";
-}
+  function renderStats() {
+    const s = window.STATS || {};
+    if (el('confMeas')) el('confMeas').textContent = s.conf_measured || '—';
+    if (el('confEst')) el('confEst').textContent = s.conf_estimated || '—';
+    if (el('confInf')) el('confInf').textContent = s.conf_inferred || '—';
+    if (el('twnCovN')) el('twnCovN').textContent = s.twn_indicators || '—';
+  }
 
-/* ============================================================
+  /* ============================================================
    重绘与交互
    ============================================================ */
-function renderAll(){
-  renderOverall(); renderGDP();
-  renderCrossStrait();
-  renderBumpPicker(); renderBump(); renderBar(); renderCat(); renderCoverage();
-  renderRadar(); renderHeat(); renderDomOverview(); renderDomains();
-  renderInputs();
-  renderGap(); renderCNDelta(); renderCNContrib(); renderCNGrid();
-  renderTwn(); renderTwnBar();
-  renderLong(); renderSensCN(); renderSensRank(); renderSensInst();
-}
-
-function bindControls(){
-  document.querySelectorAll("[data-view]").forEach(function(b){
-    b.onclick = function(){
-      document.querySelectorAll("[data-view]").forEach(function(x){x.classList.remove("on");});
-      b.classList.add("on");
-      view = Object.assign({}, VIEWS[b.dataset.view]);
-      renderAll();
-    };
-  });
-  var evBtn = el("toggleEvents");
-  if(evBtn){
-    evBtn.onclick = function(){
-      showEvents = !showEvents;
-      evBtn.classList.toggle("on", showEvents);
-      evBtn.textContent = showEvents ? "事件标注：开" : "事件标注：关";
-      renderAll();
-    };
-    evBtn.classList.toggle("on", showEvents);
-    evBtn.textContent = showEvents ? "事件标注：开" : "事件标注：关";
+  function renderAll() {
+    renderOverall(); renderGDP();
+    renderCrossStrait();
+    renderBumpPicker(); renderBump(); renderBar(); renderCat(); renderCoverage();
+    renderRadar(); renderHeat(); renderDomOverview(); renderDomains();
+    renderInputs();
+    renderGap(); renderCNDelta(); renderCNContrib(); renderCNGrid();
+    renderTwn(); renderTwnBar();
+    renderLong(); renderSensCN(); renderSensRank(); renderSensInst();
   }
-  document.querySelectorAll("[data-cs]").forEach(function(b){
-    b.onclick = function(){
-      document.querySelectorAll("[data-cs]").forEach(function(x){ x.classList.remove("on"); });
-      b.classList.add("on");
-      csMode = b.dataset.cs;
-      renderCrossStrait();
-    };
-  });
-  document.querySelectorAll("[data-gdp]").forEach(function(b){
-    b.onclick = function(){
-      document.querySelectorAll("[data-gdp]").forEach(function(x){ x.classList.remove("on"); });
-      b.classList.add("on");
-      gdpMode = b.dataset.gdp;
-      renderGDP();
-      var n = el("gdpNote");
-      if(n && DATA.gdp[gdpMode]){
-        var NOTE = {
-          "NY.GDP.MKTP.CD": "当前口径：<b>名义美元</b>（现价）。2010 年中国首次超过日本"
-            + "（5.88 万亿 vs 5.47 万亿美元），居世界第二。",
-          "NY.GDP.MKTP.PP.CD": "当前口径：<b>购买力平价</b>。该口径下中国超过日本更早"
-            + "（本报告数据为 1999 年）。两个口径相差 11 年，各自成立、不可混用。",
-          "NY.GDP.PCAP.PP.CD": "当前口径：<b>人均 GDP（购买力平价）</b>。反映实际购买力水平，"
-            + "不受汇率波动影响；中国该值仍显著低于发达国家。",
-          "NY.GDP.PCAP.CD": "当前口径：<b>人均 GDP（名义美元）</b>。注意名义值受汇率影响较大，"
-            + "与上一口径不可直接比较。"
-        };
-        var ax = (DATA.gdp[gdpMode] && DATA.gdp[gdpMode].axis === "log")
-          ? "　<span style='color:#8b95a3'>（纵轴为对数刻度，否则中美与其他国家无法同图比较）</span>"
-          : "　<span style='color:#8b95a3'>（纵轴为线性刻度）</span>";
-        n.innerHTML = (NOTE[gdpMode] || "") + ax;
-      }
-    };
-  });
-  document.querySelectorAll("[data-mode]").forEach(function(b){
-    b.onclick = function(){
-      document.querySelectorAll("[data-mode]").forEach(function(x){x.classList.remove("on");});
-      b.classList.add("on");
-      mode = b.dataset.mode;
-      renderAll();
-    };
-  });
-  // 导航高亮
-  var secs = Array.prototype.slice.call(document.querySelectorAll("section[id]"));
-  var links = Array.prototype.slice.call(document.querySelectorAll("nav a"));
-  function onScroll(){
-    var y = window.scrollY + 140, cur = secs[0];
-    secs.forEach(function(s){ if(s.offsetTop <= y) cur = s; });
-    links.forEach(function(a){ a.classList.toggle("on", a.getAttribute("href")==="#"+cur.id); });
-  }
-  window.addEventListener("scroll", onScroll, {passive:true});
-  onScroll();
-}
 
-function boot(){
+  function bindControls() {
+    document.querySelectorAll('[data-view]').forEach((b) => {
+      b.onclick = function () {
+        document.querySelectorAll('[data-view]').forEach((x) => { x.classList.remove('on'); });
+        b.classList.add('on');
+        view = { ...VIEWS[b.dataset.view] };
+        renderAll();
+      };
+    });
+    const evBtn = el('toggleEvents');
+    if (evBtn) {
+      evBtn.onclick = function () {
+        showEvents = !showEvents;
+        evBtn.classList.toggle('on', showEvents);
+        evBtn.textContent = showEvents ? '事件标注：开' : '事件标注：关';
+        renderAll();
+      };
+      evBtn.classList.toggle('on', showEvents);
+      evBtn.textContent = showEvents ? '事件标注：开' : '事件标注：关';
+    }
+    document.querySelectorAll('[data-cs]').forEach((b) => {
+      b.onclick = function () {
+        document.querySelectorAll('[data-cs]').forEach((x) => { x.classList.remove('on'); });
+        b.classList.add('on');
+        csMode = b.dataset.cs;
+        renderCrossStrait();
+      };
+    });
+    document.querySelectorAll('[data-gdp]').forEach((b) => {
+      b.onclick = function () {
+        document.querySelectorAll('[data-gdp]').forEach((x) => { x.classList.remove('on'); });
+        b.classList.add('on');
+        gdpMode = b.dataset.gdp;
+        renderGDP();
+        const n = el('gdpNote');
+        if (n && DATA.gdp[gdpMode]) {
+          const NOTE = {
+            'NY.GDP.MKTP.CD': '当前口径：<b>名义美元</b>（现价）。2010 年中国首次超过日本'
+            + '（5.88 万亿 vs 5.47 万亿美元），居世界第二。',
+            'NY.GDP.MKTP.PP.CD': '当前口径：<b>购买力平价</b>。该口径下中国超过日本更早'
+            + '（本报告数据为 1999 年）。两个口径相差 11 年，各自成立、不可混用。',
+            'NY.GDP.PCAP.PP.CD': '当前口径：<b>人均 GDP（购买力平价）</b>。反映实际购买力水平，'
+            + '不受汇率波动影响；中国该值仍显著低于发达国家。',
+            'NY.GDP.PCAP.CD': '当前口径：<b>人均 GDP（名义美元）</b>。注意名义值受汇率影响较大，'
+            + '与上一口径不可直接比较。',
+          };
+          const ax = (DATA.gdp[gdpMode] && DATA.gdp[gdpMode].axis === 'log')
+            ? "　<span style='color:#8b95a3'>（纵轴为对数刻度，否则中美与其他国家无法同图比较）</span>"
+            : "　<span style='color:#8b95a3'>（纵轴为线性刻度）</span>";
+          n.innerHTML = (NOTE[gdpMode] || '') + ax;
+        }
+      };
+    });
+    document.querySelectorAll('[data-mode]').forEach((b) => {
+      b.onclick = function () {
+        document.querySelectorAll('[data-mode]').forEach((x) => { x.classList.remove('on'); });
+        b.classList.add('on');
+        mode = b.dataset.mode;
+        renderAll();
+      };
+    });
+    // 导航高亮
+    const secs = Array.prototype.slice.call(document.querySelectorAll('section[id]'));
+    const links = Array.prototype.slice.call(document.querySelectorAll('nav a'));
+    function onScroll() {
+      const y = window.scrollY + 140;
+      let cur = secs[0];
+      secs.forEach((s) => { if (s.offsetTop <= y) cur = s; });
+      links.forEach((a) => { a.classList.toggle('on', a.getAttribute('href') === `#${cur.id}`); });
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
+  function boot() {
   // 分两段：先渲染不涉及图表的内容（核心发现卡片、综合统计、指标目录、
   // 事件表、领域表），让浏览器先绘制一帧；**再**创建图表。
   //
@@ -2665,41 +2996,43 @@ function boot(){
   // 若与文字内容放在同一个任务里，卡片虽然早已插入 DOM，
   // 却要等全部图表建完才有机会绘制——首屏像是「卡住」一两秒。
   // 拆开后文字先出现，图表随后补上。
-  renderFindings(); renderStats(); renderCatalog(); bindCatalog(); renderEventTable();
-  bindReveal();
-  renderInstList();
-  renderDomainTable(); renderRadarPicker();
+    renderFindings(); renderStats(); renderCatalog(); bindCatalog(); renderEventTable();
+    bindReveal();
+    renderInstList();
+    renderDomainTable(); renderRadarPicker();
 
-  requestAnimationFrame(function(){
-    setTimeout(function(){
-      renderAll(); bindControls();
-      // 打印/导出 PDF 用：等所有图表实例渲染完成后置位，供 CDP 轮询
-      var n = Object.keys(charts).length;
-      var done = 0, tries = 0;
-      var t = setInterval(function(){
-        done = 0;
-        Object.keys(charts).forEach(function(k){
-          try{ var o = charts[k].getOption();
-            if(o && o.series && o.series.length) done++; }catch(e){}
-        });
-        tries++;
-        if((done >= n && n > 0) || tries > 60){
-          clearInterval(t);
-          window.__CHARTS_READY__ = n;
-          window.__READY__ = true;
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        renderAll(); bindControls();
+        // 打印/导出 PDF 用：等所有图表实例渲染完成后置位，供 CDP 轮询
+        const n = Object.keys(charts).length;
+        let done = 0;
+        let tries = 0;
+        const t = setInterval(() => {
+          done = 0;
+          Object.keys(charts).forEach((k) => {
+            try {
+              const o = charts[k].getOption();
+              if (o && o.series && o.series.length) done++;
+            } catch { /* 已就绪，忽略 */ }
+          });
+          tries++;
+          if ((done >= n && n > 0) || tries > 60) {
+            clearInterval(t);
+            window.__CHARTS_READY__ = n;
+            window.__READY__ = true;
           // 此处原先还有一行 document.title = "READY-" + n，
           // 作用是「就绪标记」，但它把报告的真实标题覆盖成了 READY-43——
           // 浏览器标签页、PDF 文档属性、收藏夹都会显示成这个。
           // 就绪检测用的是 window.__CHARTS_READY__（见 topdf.py），标题无需参与，故移除。
-        }
-      }, 250);
-    }, 0);
-  });
-}
-if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", boot);
-else boot();
-
-})();
+          }
+        }, 250);
+      }, 0);
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+}());
 
 </script>
 </body>
