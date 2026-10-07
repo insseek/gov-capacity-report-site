@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>国家治理能力的国际比较 · 1949–2026</title>
 <!-- 分享预览：此前只有标题，转发到微信／X／搜索结果里是一片空白 -->
-<meta name="description" content="中国与美、日、德、法、英、俄、印、韩、新九国，在粮食能源、公共卫生、经济、科技、国防、制度等十二个治理领域的长期对比（1949–2026）。数据来自 30 个国际来源，116 项指标，评分口径事先固定并公开，中国短板如实呈现。">
+<meta name="description" content="中国与美、日、德、法、英、俄、印、韩、新九国，在粮食能源、公共卫生、经济、科技、国防、制度等十二个治理领域的长期对比（1949–2026）。数据来自 30 个国际来源，160 项指标，评分口径事先固定并公开，中国短板如实呈现。">
 <meta property="og:type" content="article">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:title" content="国家治理能力的国际比较 · 1949–2026">
-<meta property="og:description" content="十二个治理领域的长期国际对比，116 项指标、30 个来源，口径事先固定并公开。">
+<meta property="og:description" content="十二个治理领域的长期国际对比，160 项指标、30 个来源，口径事先固定并公开。">
 <meta name="twitter:card" content="summary">
 <style>
 :root{
@@ -114,6 +114,14 @@ h3{font-size:16.5px;margin:30px 0 10px;color:var(--ink)}
 .finding .v{text-wrap:balance;overflow-wrap:anywhere}
 /* 卡片被链接跳转命中时闪一下，让读者知道落在了哪张 */
 .finding:target{outline:2px solid var(--accent2);outline-offset:3px}
+/* 锚点落点要让开吸顶元素。页头 nav 吸在 top:0，部分视图的 .viewbar 又吸在
+   top:46px，两者加起来约 100px。不预留这段高度时，点内部链接跳过去，
+   目标顶部会被导航盖住——看着像「跳了但没反应」。
+   此前全站没有任何 scroll-margin，故这类跳转一直是坏的。 */
+[id]{scroll-margin-top:112px}
+/* 跳过去之后要能看出落在哪。此前只有发现卡片（.finding）有高亮，
+   其余锚点落点（.card、7.x 标题）跳过去是「静默」的，读者不确定跳没跳。 */
+.card:target,h3[id]:target{outline:2px solid var(--accent2);outline-offset:4px;border-radius:12px}
 .finding.blue{border-left-color:var(--accent2)} .finding.blue .k{color:var(--accent2)}
 .finding.ok{border-left-color:var(--ok)} .finding.ok .k{color:var(--ok)}
 .finding.warn{border-left-color:var(--warn)} .finding.warn .k{color:var(--warn)}
@@ -328,7 +336,7 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
 <header>
   <div class="wrap">
     <h1>国家治理能力的国际比较<br>——中国与美、日、德、法、英、俄、印、韩、新九国的比较研究 · 1949–2026</h1>
-    <div class="sub">v3.1.5　·　<a href="#composition" class="sublink">五大类 · 十二领域</a> · 160 项指标 · 统一年度底表 · 实测／估算／推断三级可信度标注</div>
+    <div class="sub">v3.1.6　·　<a href="#n7_1" class="sublink">五大类 · 十二领域</a> · 160 项指标 · 统一年度底表 · 实测／估算／推断三级可信度标注</div>
     <div class="tags">
       <span class="tag">发布 2026-10-07</span>
       <span class="tag">160 项指标</span>
@@ -681,7 +689,7 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
       <div id="cSensRank" class="chart"></div>
     </div>
   </div>
-  <div class="card">
+  <div class="card" id="card_inst">
     <p class="chartTitle">制度领域评分构成（2024 年）：进评分的 20 项中 17 项来自评价性指数（85%），另 3 项为制度结构项</p>
     <p class="chartNote">
       进评分的 20 项指标中 17 项（85%）为政治制度评价性指数（编制机构传统同源），评分可能部分反映制度偏见，而非治理能力的实际差距，不宜与其他 11 个领域等量齐观。
@@ -697,7 +705,7 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
   <h2><span class="n">07</span>方法论</h2>
 
   <div class="card">
-    <h3 style="margin-top:0">7.1 指标体系结构</h3>
+    <h3 id="n7_1" style="margin-top:0">7.1 指标体系结构</h3>
     <p>采用「五大类 → 十二领域 → 指标」三层结构。每个领域下挂若干指标，指标可跨年比较。下表只统计<b>纳入评分</b>的指标——投入类（税收、军费、师生比…）与仅参照项（GDP、人口、国土面积…）已在报告各处单列，不计入评分。<b>把鼠标放在「纳入指标数」上可看到该领域的指标名单。</b></p>
     <table id="tblDomains"><thead><tr><th>大类</th><th>领域</th><th class="c">纳入指标数</th><th class="c">最早数据年份</th><th class="c">台湾地区是否有数据</th></tr></thead><tbody></tbody></table>
   </div>
@@ -919,7 +927,7 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
   数据来源：World Bank、UN WPP、WHO GHO、FAOSTAT、SIPRI、COW、UCDP、UNGA Ideal Points、
   V-Dem、Freedom House、Polity5、透明国际、QoG（哥德堡大学）、Our World in Data、Global Carbon Budget、Yale EPI<br>
   生成日期：2026-10-07 · 全部图表可交互（悬停查看数值、点击图例筛选、框选缩放）<br>
-  <span style="color:#5a6472">v3.1.5　·　里探｜2026/10/05</span>
+  <span style="color:#5a6472">v3.1.6　·　里探｜2026/10/05</span>
 </div></footer>
 <div class="wm">里探｜2026/10/05</div>
 
