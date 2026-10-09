@@ -374,7 +374,7 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
 <header>
   <div class="wrap">
     <h1>国家治理能力的国际比较<br>——中国与美、日、德、法、英、俄、印、韩、新九国的比较研究 · 1949–2026</h1>
-    <div class="sub">v3.2.0　·　<a href="#n7_1" class="sublink">五大类 · 十二领域</a> · 162 项指标 · 统一年度底表 · 实测／估算／推断三级可信度标注</div>
+    <div class="sub">v3.2.1　·　<a href="#n7_1" class="sublink">五大类 · 十二领域</a> · 162 项指标 · 统一年度底表 · 实测／估算／推断三级可信度标注</div>
     <div class="tags">
       <span class="tag">发布 2026-10-10</span>
       <span class="tag">162 项指标</span>
@@ -899,7 +899,7 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
   数据来源：World Bank、UN WPP、WHO GHO、FAOSTAT、SIPRI、COW、UCDP、UNGA Ideal Points、
   V-Dem、Freedom House、Polity5、透明国际、QoG（哥德堡大学）、Our World in Data、Global Carbon Budget、Yale EPI<br>
   生成日期：2026-10-10 · 全部图表可交互（悬停查看数值、点击图例筛选、框选缩放）<br>
-  <span style="color:#5a6472">v3.2.0　·　里探｜2026/10/05</span>
+  <span style="color:#5a6472">v3.2.1　·　里探｜2026/10/05</span>
 </div></footer>
 <div class="wm">里探｜2026/10/05</div>
 
@@ -1705,29 +1705,49 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
    * 画这排按钮。onChange(新代码) 由各页自己接——两页的着色与绘图逻辑不同。
    * hostId 两页都叫 gdpCtl。
    */
+  /**
+   * 控件条：一排「标签：按钮… 标签：按钮…」。
+   *
+   * **三处选择器共用这一份写法**——「各国 GDP 对比」的口径/视图、两岸那张的
+   * 口径/视图、经济页长序列图的视图。此前这三处各自手写了一遍同样的 markup，
+   * 结果长序列那张忘了给容器加 `dsh-ctl`（样式全挂在那儿），
+   * 标签显示成 15px 黑、整排变 block —— 手抄 class 名就会出这种错。
+   *
+   * groups: [{ label, items: [{ key, text, on }], gap }]；
+   * onPick(key)：点击时回调，key 由调用方自己解释（带前缀，如 'cal:0'）。
+   */
+  function ctlRow(host, groups, onPick) {
+    const el = typeof host === 'string' ? document.getElementById(host) : host;
+    if (!el) return;
+    el.classList.add('dsh-ctl'); // 样式只在 .dsh-ctl 这一处定义
+    const parts = [];
+    groups.forEach((g) => {
+      parts.push(`<span class="lbl"${g.gap ? ` style="margin-left:${g.gap}px"` : ''}>${g.label}</span>`);
+      parts.push(g.items.map((it) => (
+        `<button class="btn mini${it.on ? ' on' : ''}" data-k="${it.key}">${it.text}</button>`
+      )).join(''));
+    });
+    el.innerHTML = `<div>${parts.join('')}</div>`;
+    el.querySelectorAll('button[data-k]').forEach((b) => {
+      b.addEventListener('click', () => onPick(b.dataset.k));
+    });
+  }
+
   function gdpCtl(hostId, code, onChange) {
-    const host = document.getElementById(hostId);
-    if (!host) return;
-    host.classList.add('dsh-ctl'); // 与两岸卡共用同一套按钮样式
     const pos = gdpPos(code);
     // 口径一排不带前缀（只有两档，自身即标签）；视图一排带「视图：」。
-    const cals = GDP_CALS.map((c, ci) => `<button class="btn mini${
-      ci === pos.cal ? ' on' : ''}" data-cal="${ci}">${c.label}</button>`).join('');
-    const views = GDP_VIEWS.map((v, vi) => `<button class="btn mini${
-      vi === pos.view ? ' on' : ''}" data-view="${vi}">${v}</button>`).join('');
     // **一排**，与两岸那张完全同构：口径按钮 → 「视图：」标签 → 视图按钮。
-    // （此前分两排，比两岸那张高出一行，看着不齐。）
-    host.innerHTML = `<div><span class="lbl">口径：</span>${cals}`
-      + `<span class="lbl" style="margin-left:14px">视图：</span>${views}</div>`;
-    host.querySelectorAll('button[data-cal]').forEach((b) => {
-      b.addEventListener('click', () => {
-        onChange(GDP_CALS[Number(b.dataset.cal)].codes[gdpPos(code).view]);
-      });
-    });
-    host.querySelectorAll('button[data-view]').forEach((b) => {
-      b.addEventListener('click', () => {
-        onChange(GDP_CALS[gdpPos(code).cal].codes[Number(b.dataset.view)]);
-      });
+    const calItems = GDP_CALS.map((c, ci) => ({ key: `cal:${ci}`, text: c.label, on: ci === pos.cal }));
+    const viewItems = GDP_VIEWS.map((v, vi) => ({ key: `view:${vi}`, text: v, on: vi === pos.view }));
+    ctlRow(hostId, [
+      { label: '口径：', items: calItems },
+      { label: '视图：', gap: 14, items: viewItems },
+    ], (k) => {
+      const [kind, idx] = k.split(':');
+      const n = Number(idx);
+      onChange(kind === 'cal'
+        ? GDP_CALS[n].codes[gdpPos(code).view]
+        : GDP_CALS[gdpPos(code).cal].codes[n]);
     });
   }
 
@@ -1742,25 +1762,21 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
     function block() { return cals[cal]; }
 
     function buildCtl() {
-      const host = cfg.ctl && document.getElementById(cfg.ctl);
-      if (!host) return;
       // **一行**，与「各国 GDP 对比」那张图的口径栏同格式：
       //   口径：购买力平价（PPP） 名义美元 视图：GDP 总量 人均 GDP …
-      // 此前排成两行（口径一行、视图一行），与另一张图的按钮栏不一致。
-      const parts = [];
+      // 与另两处选择器共用 ctlRow，不再各写一遍 markup。
+      const groups = [];
       if (Object.keys(cals).length > 1) {
-        parts.push(`<span class="lbl">口径：</span>${Object.keys(cals).map((k) => `<button class="btn mini${k === cal ? ' on' : ''}" data-ccal="${k
-        }">${CS_CAL_LABEL[k] || k}</button>`).join('')}`);
+        const calItems = Object.keys(cals).map((k) => (
+          { key: `ccal:${k}`, text: CS_CAL_LABEL[k] || k, on: k === cal }));
+        groups.push({ label: '口径：', items: calItems });
       }
-      parts.push(`<span class="lbl" style="margin-left:14px">视图：</span>${
-        Object.keys(CS_VIEWS).map((k) => `<button class="btn mini${k === view ? ' on' : ''}" data-cs="${k
-        }">${CS_VIEWS[k].label}</button>`).join('')}`);
-      host.innerHTML = `<div>${parts.join('')}</div>`;
-      host.querySelectorAll('button[data-ccal]').forEach((b) => {
-        b.addEventListener('click', () => { setCal(b.dataset.ccal); });
-      });
-      host.querySelectorAll('button[data-cs]').forEach((b) => {
-        b.addEventListener('click', () => { setView(b.dataset.cs); });
+      const viewItems = Object.keys(CS_VIEWS).map((k) => (
+        { key: `cs:${k}`, text: CS_VIEWS[k].label, on: k === view }));
+      groups.push({ label: '视图：', gap: 14, items: viewItems });
+      ctlRow(cfg.ctl, groups, (k) => {
+        if (k.startsWith('ccal:')) setCal(k.slice(5));
+        else setView(k.slice(3));
       });
     }
 
@@ -2036,7 +2052,7 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
     colorOf, axisStyle, axis, tip,
     legendCfg, baseGrid, gridWithAxisName,
     abbr, eventMark, setMarkEvents, crossStrait, gdpCtl, GDP_CALS, GDP_VIEWS, cnNum,
-    gdpCross, gdpLead, dataSpan, sliceSpan, trimYearAxis, setRealEnd,
+    gdpCross, gdpLead, dataSpan, sliceSpan, trimYearAxis, setRealEnd, ctlRow,
     dressCrossCard,
     CS_VIEWS,
   };
