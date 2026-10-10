@@ -59,9 +59,6 @@ h3{font-size:16.5px;margin:30px 0 10px;color:var(--ink)}
    此前同一个位置用过四种（.lead / .subnote / .note.crit / .note.info），
    改一种就要记住改几处，且视觉上参差。统一到这里；正文中的提示框仍用 .note。 */
 .lead{color:var(--ink2);margin:0 0 14px;line-height:1.75}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;
-  padding:20px 22px;box-shadow:var(--shadow);margin-bottom:18px}
-.grid{display:grid;gap:16px}
 .g2{grid-template-columns:repeat(2,1fr)}
 .g3{grid-template-columns:repeat(3,1fr)}
 .g4{grid-template-columns:repeat(4,1fr)}
@@ -69,10 +66,6 @@ h3{font-size:16.5px;margin:30px 0 10px;color:var(--ink)}
 @media(max-width:720px){.g2,.g3,.g4{grid-template-columns:1fr}}
 
 /* ---------- charts ---------- */
-.chart{width:100%;height:420px}
-.chart.sm{height:250px}
-.chart.lg{height:520px}
-.chart.xl{height:620px}
 /* 国家选择器吸顶：整个板块共用这一个，滑到第 8 张卡也够得着。
    照 .viewbar 的模式——顶部导航高约 46px，故 top:46px；z-index 低于它。 */
 /* ---------- 选择器：全报告一套外观 ---------- */
@@ -86,16 +79,9 @@ h3{font-size:16.5px;margin:30px 0 10px;color:var(--ink)}
    文字若不留内边距就会贴着自己的横条边（作者发现）。 */
 /* 吸顶选择器：**吸顶只是附加行为，外观与卡片内那几处完全一致**（作者要求统一）。
    做法：静止时透明、无边框（内边距用卡片自己的 22px，左缘才对得齐）；
-   只有**真的吸住**时（脚本加 .is-stuck）才补上底色与下边框——
-   否则内容会从底下滚出来叠在按钮上。内边距始终不变，吸住时不会跳一下。 */
-.pickRow.sticky{position:sticky;top:46px;z-index:39;padding:10px 22px;
-  background:transparent;border-bottom:1px solid transparent}
-.pickRow.sticky.is-stuck{background:var(--card);border-bottom-color:var(--line)}
 /* 视图栏沿用 .lbl 的写法，样式归到同一套 */
 /* 选择器按钮统一为 mini 尺寸：视图栏原先用大一号的 .btn，与选择器不一致 */
 .viewbar .btn{padding:4px 10px;font-size:12px}
-.chartTitle{font-size:14px;font-weight:600;margin:0 0 2px}
-.chartNote{font-size:12.5px;color:var(--ink3);margin:0 0 12px}
 
 /* ---------- view switcher ---------- */
 .viewbar{position:sticky;top:46px;z-index:40;background:var(--bg);padding:14px 12px 10px;
@@ -316,6 +302,12 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
 /* ---------- 打印 / PDF ---------- */
 @media print{
   @page{ size:A4 landscape; margin:10mm 9mm 12mm 9mm; }
+  /* 图表尺寸（打印用，与屏幕上的 .chart 各档一一对应）——这几条是**打印专用**，
+     不能搬到共享层：那里是屏幕尺寸。 */
+  .chart{ height:78mm !important; }
+  .chart.sm{ height:58mm !important; }
+  .chart.lg{ height:92mm !important; }
+  .chart.xl{ height:118mm !important; }
   html,body{background:#fff}
   *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
 
@@ -341,12 +333,8 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
   .chartTitle,.chartNote{ break-after:avoid; }
 
   /* 固定图表高度，防止 ECharts 在打印时会话成 0 高 */
-  .chart{ height:78mm !important; }
   /* 打印时取消吸顶，否则选择器会压在每页内容上 */
   .pickRow{ position:static; border-bottom:0; padding:0; }
-  .chart.sm{ height:58mm !important; }
-  .chart.lg{ height:92mm !important; }
-  .chart.xl{ height:118mm !important; }
 
   /* 长表格必须允许跨页，否则 113 行的溯源表会被整块丢弃。
      注意 .tblwrap 不能设 break-inside:avoid */
@@ -378,7 +366,7 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
 <header>
   <div class="wrap">
     <h1>国家治理能力的国际比较<br>——中国与美、日、德、法、英、俄、印、韩、新九国的比较研究 · 1949–2026</h1>
-    <div class="sub">v3.3.1　·　<a href="#n7_1" class="sublink">五大类 · 十二领域</a> · 162 项指标 · 统一年度底表 · 实测／估算／推断三级可信度标注</div>
+    <div class="sub">v3.3.2　·　<a href="#n7_1" class="sublink">五大类 · 十二领域</a> · 162 项指标 · 统一年度底表 · 实测／估算／推断三级可信度标注</div>
     <div class="tags">
       <span class="tag">发布 2026-10-10</span>
       <span class="tag">162 项指标</span>
@@ -907,7 +895,7 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
   数据来源：World Bank、UN WPP、WHO GHO、FAOSTAT、SIPRI、COW、UCDP、UNGA Ideal Points、
   V-Dem、Freedom House、Polity5、透明国际、QoG（哥德堡大学）、Our World in Data、Global Carbon Budget、Yale EPI<br>
   生成日期：2026-10-10 · 全部图表可交互（悬停查看数值、点击图例筛选、框选缩放）<br>
-  <span style="color:#5a6472">v3.3.1　·　里探｜2026/10/05</span>
+  <span style="color:#5a6472">v3.3.2　·　里探｜2026/10/05</span>
 </div></footer>
 <div class="wm">里探｜2026/10/05</div>
 
@@ -2059,7 +2047,29 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
       '.dsh-cs-card .dsh-cs-chart{height:460px;width:100%}',
       // 国家选择器（picker）的外观：**两个报告共用这一份**。
       // 原先只写在主报告模板里，经济页没有——于是那边压根建不出选择器。
+      // 卡片与图表的基本外观：**两个报告共用这一份**（原先只在主报告的模板里，
+      // 经济页另有一套 .ec-card/.ec-note 的值——内边距、圆角、标题字号都不同，
+      // 同一个项目里两张图长得不一样。作者要求以治理报告为基准统一）。
+      // 别名把经济页既有选择器一并纳入，改一处两页同时生效。
+      '.card,.ec-card{background:var(--card,#fff);border:1px solid var(--line,#e3e7ec);',
+      '  border-radius:12px;padding:20px 22px;margin-bottom:18px}',
+      '.chartTitle,.ec-card>h3{font-size:14px;font-weight:600;margin:0 0 2px}',
+      '.chartNote,.ec-note{font-size:12.5px;color:var(--ink3,#8b95a3);margin:0 0 12px}',
+      // 尺寸别名一并给了经济页的 .ec-chart（它原来自己写一套 height，现已并入这里）
+      '.chart,.ec-chart{width:100%;height:420px}',
+      '.chart.sm{height:250px}',
+      '.chart.lg,.ec-chart.tall{height:520px}',
+      '.chart.xl{height:620px}',
+      '.grid{display:grid;gap:16px}',
       '.pickRow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 12px}',
+      // 吸顶选择器：**两个报告共用这一份**（主报告的领域轨迹与重要指标、
+      // 经济页的「全部指标」）。静止时与同排的普通选择器**完全一样**（透明、无边框），
+      // 只有真的吸住时（脚本加 .is-stuck）才补底色与下边框——否则内容会从底下滚出来
+      // 叠在按钮上。内边距固定，吸住的一刻不会跳。颜色带兜底值，两个页面都成立。
+      '.pickRow.sticky{position:sticky;top:46px;z-index:39;padding:10px 22px;',
+      '  background:transparent;border-bottom:1px solid transparent}',
+      '.pickRow.sticky.is-stuck{background:var(--card,#fff);',
+      '  border-bottom-color:var(--line,#e3e7ec)}',
       '.dsh-pick-label{font-size:12.5px;color:var(--ink2);margin-right:4px}',
       '.dsh-pick-hint{font-size:11.5px;color:var(--ink3);margin-left:6px}',
       '.dsh-cs-card .dsh-ctl,.dsh-gdp-card .dsh-ctl{display:block;position:static;',
@@ -2979,10 +2989,9 @@ const DATA = {"entities":[{"iso":"CHN","cn":"中国","en":"China","main":true,"c
           return s;
         },
       }),
-      legend: {
-        top: 0, left: 'center', itemWidth: 14, itemHeight: 9,
-        textStyle: { color: '#5a6472', fontSize: 12, fontFamily: FONT },
-      },
+      // **隐藏图例**：两条线在右端各有「中国 / 高收入国家中位数」标签，图例是重复的；
+      // 与经济页同款那张（中国 vs 七个高收入国家中位数）保持一致——那边也已隐藏。
+      legend: { show: false },
       xAxis: axis({
         type: 'category', data: ys.map(String),
         axisLabel: {
