@@ -79,14 +79,18 @@ h3{font-size:16.5px;margin:30px 0 10px;color:var(--ink)}
 /* 容器 .pickRow + 标签 .dsh-pick-label + 按钮 .btn.mini。
    原先视图栏(.viewbar/.lbl/.btn)、雷达(#radarPick.legend)、
    吸顶选择器(.pickRow) 各一套，按钮尺寸与标签都不同（作者指出）。 */
-.pickRow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 12px}
+/* .pickRow / .dsh-pick-label / .dsh-pick-hint 已移到共享层（charts.js），
+   两个报告共用一份：经济页原先没有这三条，也就建不出国家选择器。 */
 /* 需要跟着滚动浮动的选择器加 .sticky（目前是领域评分轨迹与重要指标数据）。 */
 /* 左右内边距与 .viewbar 一致（14px 12px 10px）：吸顶时横条的边缘在内容左缘，
    文字若不留内边距就会贴着自己的横条边（作者发现）。 */
-.pickRow.sticky{position:sticky;top:46px;z-index:39;background:var(--bg);
-  padding:10px 12px;border-bottom:1px solid var(--line)}
-.dsh-pick-label{font-size:12.5px;color:var(--ink2);margin-right:4px}
-.dsh-pick-hint{font-size:11.5px;color:var(--ink3);margin-left:6px}
+/* 吸顶选择器：**吸顶只是附加行为，外观与卡片内那几处完全一致**（作者要求统一）。
+   做法：静止时透明、无边框（内边距用卡片自己的 22px，左缘才对得齐）；
+   只有**真的吸住**时（脚本加 .is-stuck）才补上底色与下边框——
+   否则内容会从底下滚出来叠在按钮上。内边距始终不变，吸住时不会跳一下。 */
+.pickRow.sticky{position:sticky;top:46px;z-index:39;padding:10px 22px;
+  background:transparent;border-bottom:1px solid transparent}
+.pickRow.sticky.is-stuck{background:var(--card);border-bottom-color:var(--line)}
 /* 视图栏沿用 .lbl 的写法，样式归到同一套 */
 /* 选择器按钮统一为 mini 尺寸：视图栏原先用大一号的 .btn，与选择器不一致 */
 .viewbar .btn{padding:4px 10px;font-size:12px}
@@ -374,7 +378,7 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
 <header>
   <div class="wrap">
     <h1>国家治理能力的国际比较<br>——中国与美、日、德、法、英、俄、印、韩、新九国的比较研究 · 1949–2026</h1>
-    <div class="sub">v3.2.1　·　<a href="#n7_1" class="sublink">五大类 · 十二领域</a> · 162 项指标 · 统一年度底表 · 实测／估算／推断三级可信度标注</div>
+    <div class="sub">v3.3.0　·　<a href="#n7_1" class="sublink">五大类 · 十二领域</a> · 162 项指标 · 统一年度底表 · 实测／估算／推断三级可信度标注</div>
     <div class="tags">
       <span class="tag">发布 2026-10-10</span>
       <span class="tag">162 项指标</span>
@@ -386,7 +390,7 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
     </div>
     <div class="author">
       <span>里探｜2026/10/05｜DeepSeek Harness 辅助</span>
-      <a href="https://github.com/insseek/gov-capacity-report" target="_blank" rel="noopener">源代码与完整方法记录 → GitHub</a>
+      <a href="https://china-economic-development-report.netlify.app/" target="_blank" rel="noopener">姊妹报告《中国经济的腾飞》 →</a>
     </div>
 
     <div class="disc">
@@ -463,9 +467,10 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
   <div class="stickyScope">
   <div class="viewbar">
     <span class="lbl">时间视图：</span>
-    <button class="btn on" data-view="long">长周期 1949–2026（每5年）</button>
-    <button class="btn" data-view="mid">近30年 1996–2026（每3年）</button>
-    <button class="btn" data-view="recent">近10年 2016–2026（每年）</button>
+    <!-- 两档：全周期与 1990 年至今，默认后者。末端标的是**数据年**（2024），
+         不是面板末年——图只画到数据年（之后的派生值多是外推出来的）。 -->
+    <button class="btn" data-view="long">1949 年至今（1949–2024）</button>
+    <button class="btn on" data-view="since1990">1990 年至今（1990–2024）</button>
     <span class="lbl" style="margin-left:auto">评分口径：</span>
     <button class="btn mini on" data-mode="equal" title="十二领域等权，领域内指标等权——主口径，最直观">等权</button>
     <button class="btn mini" data-mode="outcome_only" title="剔除 WGI、V-Dem、自由之家、Polity5、CPI 等程序性指标——区分「治理产出」与「制度形态」">仅结果型</button>
@@ -486,6 +491,8 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
   <div class="card">
     <p class="chartTitle">综合评分轨迹</p>
     <p class="chartNote" id="noteOverall">中国以红色加粗；点击图例可隐藏/显示国家。</p>
+    <!-- 国家选择：与其余各节同一个 picker（共享层），默认取 catalog.DEFAULT_PICK -->
+    <div class="pickRow" id="overallPick"></div>
     <div id="cOverall" class="chart lg"></div>
   </div>
 
@@ -498,6 +505,7 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
 
     <!-- 按钮由 src/charts.js 的 gdpCtl 生成（口径一排、视图一排），与经济页共用一份。 -->
     <div class="viewbar" id="gdpCtl" style="position:static;border:0"></div>
+    <div class="pickRow" id="gdpPick"></div>
     <p class="chartNote" id="gdpLead" style="margin:2px 0 8px"></p>
     <div id="cGDP" class="chart lg"></div>
     <p class="chartNote" id="gdpNote"></p>
@@ -899,7 +907,7 @@ footer{padding:40px 0 60px;color:var(--ink3);font-size:12.5px;border-top:1px sol
   数据来源：World Bank、UN WPP、WHO GHO、FAOSTAT、SIPRI、COW、UCDP、UNGA Ideal Points、
   V-Dem、Freedom House、Polity5、透明国际、QoG（哥德堡大学）、Our World in Data、Global Carbon Budget、Yale EPI<br>
   生成日期：2026-10-10 · 全部图表可交互（悬停查看数值、点击图例筛选、框选缩放）<br>
-  <span style="color:#5a6472">v3.2.1　·　里探｜2026/10/05</span>
+  <span style="color:#5a6472">v3.3.0　·　里探｜2026/10/05</span>
 </div></footer>
 <div class="wm">里探｜2026/10/05</div>
 
@@ -1235,11 +1243,10 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
           return out;
         },
       },
-      legend: {
-        top: 0,
-        type: 'scroll',
-        textStyle: { fontSize: 11.5, fontFamily: FONT, color: INK2 },
-      },
+      // **隐藏图例**：这张图的卡片上已经有「显示国家」picker，两者是同一件事，
+      // 同时出现等于一个图里放两个国家选择器（作者指出）。读数靠 picker 与
+      // 悬停提示框（提示框仍会列出国家名与数值）。
+      legend: { show: false },
       // 这张图的横轴由 real_span 决定（真实数据到哪就画到哪），不走数据年总闸
       noRealEnd: true,
       // 右上角标数据源：默认世行 WDI（这张图的主口径）；麦迪逊那张由调用方换掉。
@@ -1353,6 +1360,35 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
    *
    * opts: { host, label, items:[{key,label}], picked:{key:bool}, onChange, hint }
    */
+  /**
+   * 国家选择器：**两个报告、所有图表都走这一个函数**。
+   *
+   * 文案（「显示国家：」）、提示、条目顺序、切换行为都在这里定死——调用方只给
+   * 宿主、状态与清单。此前六处各写一遍，文案就分叉出「选择国家／显示国家」两种，
+   * 样式也一度不一致（作者指出）。
+   *
+   * opts: {
+   *   items        [{key,label}]，或
+   *   entities     [{iso,cn}]（自动转成 items）
+   *   defaultCount 默认选中几国（写进提示「默认 N 国」）
+   *   hint         传 null 表示不要提示行；不传则用默认提示
+   * }
+   */
+  function countryPicker(host, picked, onChange, opts) {
+    const o = opts || {};
+    const items = o.items || (o.entities || []).map((e) => ({ key: e.iso, label: e.cn }));
+    return picker({
+      host,
+      label: '显示国家：', // ★ 全项目唯一一处文案，改这里就全改
+      items,
+      picked,
+      onChange,
+      hint: o.hint === undefined
+        ? `默认 ${o.defaultCount} 国；10 国全开时线条会互相遮挡`
+        : o.hint,
+    });
+  }
+
   function picker(opts) {
     const o = opts || {};
     const host = typeof o.host === 'string' ? document.getElementById(o.host) : o.host;
@@ -1716,6 +1752,31 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
    * groups: [{ label, items: [{ key, text, on }], gap }]；
    * onPick(key)：点击时回调，key 由调用方自己解释（带前缀，如 'cal:0'）。
    */
+  /**
+   * 吸顶选择器：**只在吸住时**给容器加 `.is-stuck`。
+   *
+   * 为什么需要它：吸顶时内容会从底下滚出来，必须有不透明底色；可静止时如果也带
+   * 底色和下边框，它看着就跟卡片里那几处选择器不是一套了（作者指出）。
+   * 内边距不随状态变，所以吸住的那一刻不会跳。
+   */
+  function stickyPick(host) {
+    const el = typeof host === 'string' ? document.getElementById(host) : host;
+    if (!el) return;
+    const TOP = 46; // 与 CSS 的 top 一致
+    let raf = 0;
+    const sync = () => {
+      raf = 0;
+      // 吸住 = 容器上缘已经贴到（或越过）吸顶位置，且它本身还在视口里
+      const r = el.getBoundingClientRect();
+      const stuck = r.top <= TOP + 1 && r.bottom > TOP;
+      el.classList.toggle('is-stuck', stuck);
+    };
+    const onScroll = () => { if (!raf) raf = window.requestAnimationFrame(sync); };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    sync();
+  }
+
   function ctlRow(host, groups, onPick) {
     const el = typeof host === 'string' ? document.getElementById(host) : host;
     if (!el) return;
@@ -1783,24 +1844,20 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
     function setCal(k) {
       if (!cals[k]) return;
       cal = k;
-      const h = cfg.ctl && document.getElementById(cfg.ctl);
-      if (h) {
-        h.querySelectorAll('button[data-ccal]').forEach((x) => {
-          x.classList.toggle('on', x.dataset.ccal === cal);
-        });
-      }
+      // **按状态重建整排**（与「各国 GDP 对比」的 gdpCtl 同一路）：
+      // 不再按属性名逐个 toggle——ctlRow 换成 data-k 之后，那种写法会静默失效，
+      // 按钮停在旧状态（作者发现的 bug）。
+      buildCtl();
       render();
     }
 
     function setView(k) {
       if (!CS_VIEWS[k]) return;
       view = k;
-      const h = cfg.ctl && document.getElementById(cfg.ctl);
-      if (h) {
-        h.querySelectorAll('button[data-cs]').forEach((x) => {
-          x.classList.toggle('on', x.dataset.cs === view);
-        });
-      }
+      // **按状态重建整排**（与「各国 GDP 对比」的 gdpCtl 同一路）：
+      // 不再按属性名逐个 toggle——ctlRow 换成 data-k 之后，那种写法会静默失效，
+      // 按钮停在旧状态（作者发现的 bug）。
+      buildCtl();
       render();
     }
 
@@ -1905,7 +1962,9 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
               + `台湾地区为中国大陆的 <b>${(b / a * 100).toFixed(1)}%</b>`;
           },
         }),
-        legend: legendCfg(['中国大陆', '台湾地区'], { center: true }),
+        // **隐藏图例**：两条线在右端各有「中国大陆 / 台湾地区」标签，
+        // 图例是重复的（作者指出）。悬停提示框同样会报出名字与数值。
+        legend: { show: false },
         xAxis: {
           type: 'category', data: ys, boundaryGap: false, ...axisStyle(),
           axisLabel: { color: INK3, fontSize: 10.5, fontFamily: FONT, interval: 4 },
@@ -1998,6 +2057,11 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
       // 图高也由这里定：两页原本一个 420px、一个 520px（.chart / .ec-chart.tall），
       // 卡片高度就跟着差一截。
       '.dsh-cs-card .dsh-cs-chart{height:460px;width:100%}',
+      // 国家选择器（picker）的外观：**两个报告共用这一份**。
+      // 原先只写在主报告模板里，经济页没有——于是那边压根建不出选择器。
+      '.pickRow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 12px}',
+      '.dsh-pick-label{font-size:12.5px;color:var(--ink2);margin-right:4px}',
+      '.dsh-pick-hint{font-size:11.5px;color:var(--ink3);margin-left:6px}',
       '.dsh-cs-card .dsh-ctl,.dsh-gdp-card .dsh-ctl{display:block;position:static;',
       'top:auto;padding:0;',
       'margin:10px 0 6px;background:none;border:0;box-shadow:none;gap:0;z-index:auto}',
@@ -2052,7 +2116,8 @@ var Fr={},Gr={};var Wr,Hr=function(){function t(t,e,n){var i=this;this._sleepAft
     colorOf, axisStyle, axis, tip,
     legendCfg, baseGrid, gridWithAxisName,
     abbr, eventMark, setMarkEvents, crossStrait, gdpCtl, GDP_CALS, GDP_VIEWS, cnNum,
-    gdpCross, gdpLead, dataSpan, sliceSpan, trimYearAxis, setRealEnd, ctlRow,
+    gdpCross, gdpLead, dataSpan, sliceSpan, trimYearAxis, setRealEnd, ctlRow, stickyPick,
+    countryPicker,
     dressCrossCard,
     CS_VIEWS,
   };
@@ -2132,11 +2197,11 @@ const DATA = {"entities":[{"iso":"CHN","cn":"中国","en":"China","main":true,"c
   // 面板的首末年——视图窗口与各处边界由它算，不写死具体年份。
   // 必须定义在下面 view / VIEWS 之前：const 有暂时性死区，先用后定义会整页报错。
   const Y0 = Y[0];
-  const YN = Y[Y.length - 1];
   // 默认截止到**数据年** DE（不是面板末年 PE）——上面 65-66 行写的就是这个意思，
   // 但代码一直用的是 PE，于是默认视图画到 2026（那一年 96% 是外推）。
   // 面板末年实测占比低至个位数，默认展示会让读者把外推值当作数据（作者指出）。
-  let view = { start: Y0, end: DE, tick: '5y' };
+  // 默认看「1990 年至今」：那时起的国际统计才比较齐（与 VIEWS 的默认项一致）
+  let view = { start: Math.max(Y0, 1990), end: DE, tick: '5y' };
   let mode = 'equal';
   // 默认选中哪些国家：一律取共享层的**唯一配置**（charts.js 的 DEFAULT_PICK）。
   // 此前这里各写一份，评审时发现 3 国／4 国／5 国三种并存，没有道理（作者指出）。
@@ -2150,19 +2215,17 @@ const DATA = {"entities":[{"iso":"CHN","cn":"中国","en":"China","main":true,"c
   const bumpPicked = { ...defaultPicked };
   const domPicked = { ...defaultPicked };
   const longPicked = { ...defaultPicked };
+  // 「综合评分轨迹」与「各国 GDP 对比」两张图的国家选择：初值同样取共享配置
+  // （data.default_pick ← catalog.DEFAULT_PICK），状态各自独立。
+  const overallPicked = { ...defaultPicked };
+  const gdpPicked = { ...defaultPicked };
 
-  // 三个视图窗口的门槛**从面板年份算**，不写死：长周期＝全部年份，
-  // 中期＝近 30 年，近期＝近 10 年。写死则在数据年份变动后会错位。
+  // 两档时间窗口，**末端都到数据年 DE**（数据年之后的派生值多是前向外推出来的）。
+  // 作者定：只保留「1949 年至今」与「1990 年至今」两档，默认后者——
+  // 1990 年起国际统计才比较齐；更早的年份大量依赖插值（图上浅灰带标出的就是那些年）。
   const VIEWS = {
-    // 时间轴一律到**数据年** DE，不到面板末年 PE。
-    // 原先注释写的是「数据年之后的派生指数为空值，图上自然留白」——**这个假设是错的**：
-    // 派生指数（各领域评分、综合评分）在数据年之后并不为空，而是靠前向外推算出来的
-    // （2025 有 61% 的输入是外推、2026 有 96%）。于是默认视图画到 2026，
-    // 读者会把外推出来的分数当作实测数据。
-    // 作者指出：综合评分也可以只画到数据年——现在按这条办。
     long: { start: Y0, end: DE, tick: '5y' },
-    mid: { start: Math.max(Y0, YN - 29), end: DE, tick: '3y' },
-    recent: { start: Math.max(Y0, YN - 9), end: DE, tick: '1y' },
+    since1990: { start: Math.max(Y0, 1990), end: DE, tick: '5y' },
   };
 
   /* ---------- 工具 ---------- */
@@ -2318,13 +2381,23 @@ const DATA = {"entities":[{"iso":"CHN","cn":"中国","en":"China","main":true,"c
   }
   function legendCfg() { return window.DSHChart.legendCfg(ENT10.map((e) => e.cn)); }
 
+  /** 建一组国家选择器——**两个报告共用共享层的 countryPicker**（文案与提示都在那里）。 */
+  function buildCountryPick(hostId, picked, onChange) {
+    window.DSHChart.countryPicker(hostId, picked, onChange, {
+      items: MAIN.map((iso) => ({ key: iso, label: BY[iso].cn })),
+      defaultCount: (DATA.default_pick || []).length,
+    });
+  }
+
   /* ============================================================
    01 综合评分轨迹
    ============================================================ */
   function renderOverall() {
     const ys = yearsInView();
     const blk = DATA.overall[mode];
-    const series = MAIN.map((iso) => lineSeries(iso, ys, blk, {}));
+    buildCountryPick('overallPick', overallPicked, () => renderOverall());
+    const shown = MAIN.filter((iso) => overallPicked[iso]);
+    const series = shown.map((iso) => lineSeries(iso, ys, blk, {}));
 
     // 事件标注：竖向虚线 + 斜排事件名。
     // 标签会互相重叠、也读不清——这是接受的代价；可读性由 hover 提示框承担。
@@ -2362,7 +2435,9 @@ const DATA = {"entities":[{"iso":"CHN","cn":"中国","en":"China","main":true,"c
           return s + eventTipHTML(evs, y);
         },
       }),
-      legend: legendCfg(),
+      // 与「各国 GDP 对比」同理：这张图上方已有「显示国家」picker，
+      // 再挂一个图例就等于两个国家选择器（作者要求一个图只留一种）。
+      legend: { show: false },
       xAxis: axis({
         type: 'category', data: ys.map(String),
         axisLabel: {
@@ -2385,6 +2460,7 @@ const DATA = {"entities":[{"iso":"CHN","cn":"中国","en":"China","main":true,"c
    ============================================================ */
   let gdpMode = 'NY.GDP.MKTP.CD';
   function renderGDP() {
+    buildCountryPick('gdpPick', gdpPicked, () => renderGDP());
     const blk = (DATA.gdp || {})[gdpMode];
     const isPPP = gdpMode.indexOf('.PP.') >= 0;
     // 图表本体在 charts.js 的 gdpChart 里——与经济页**同一个组件、同一套画法**。
@@ -2394,7 +2470,7 @@ const DATA = {"entities":[{"iso":"CHN","cn":"中国","en":"China","main":true,"c
       draw,
       host: 'cGDP',
       blk,
-      entities: ENT10,
+      entities: ENT10.filter((e) => gdpPicked[e.iso]),
       byIso: BY,
       years: Y,
       // 上界取「视图末端」与「该口径真实数据的末端」中更晚的一个：
@@ -2621,14 +2697,15 @@ const DATA = {"entities":[{"iso":"CHN","cn":"中国","en":"China","main":true,"c
   function renderBumpPicker() {
     const d = el('bumpPick'); if (!d) return;
     d.innerHTML = '';
-    window.DSHChart.picker({
-      host: d,
-      label: '显示国家：',
-      items: MAIN.map((iso) => ({ key: iso, label: BY[iso].cn })),
-      picked: bumpPicked,
-      onChange: () => { renderBumpPicker(); renderBump(); },
-      hint: `默认 ${(DATA.default_pick || []).length} 国；10 国全开时线条会互相遮挡`,
-    });
+    window.DSHChart.countryPicker(
+      d,
+      bumpPicked,
+      () => { renderBumpPicker(); renderBump(); },
+      {
+        items: MAIN.map((iso) => ({ key: iso, label: BY[iso].cn })),
+        defaultCount: (DATA.default_pick || []).length,
+      },
+    );
   }
 
   /* ============================================================
@@ -2637,13 +2714,16 @@ const DATA = {"entities":[{"iso":"CHN","cn":"中国","en":"China","main":true,"c
   function renderRadarPicker() {
     const d = el('radarPick'); if (!d) return;
     d.innerHTML = '';
-    window.DSHChart.picker({
-      host: d,
-      label: '选择国家：',
-      items: ENT.map((e) => ({ key: e.iso, label: e.cn })),
-      picked: radarPicked,
-      onChange: () => { renderRadarPicker(); renderRadar(); },
-    });
+    // 雷达图含台湾地区（11 项），且原本没有提示行——hint: null 明确不要提示。
+    window.DSHChart.countryPicker(
+      d,
+      radarPicked,
+      () => { renderRadarPicker(); renderRadar(); },
+      {
+        items: ENT.map((e) => ({ key: e.iso, label: e.cn })),
+        hint: null,
+      },
+    );
   }
   function renderRadar() {
     const y = DE; // 数据年，非面板末年
@@ -2806,14 +2886,10 @@ const DATA = {"entities":[{"iso":"CHN","cn":"中国","en":"China","main":true,"c
       }
       host.appendChild(card);
     });
-    // 国家选择器与卡片一样，全报告只有一处构建（见 charts.js 的 picker）。
-    window.DSHChart.picker({
-      host: 'domPick',
-      label: '显示国家：',
+    // 国家选择器与卡片一样，全项目只有一处构建（见 charts.js 的 countryPicker）。
+    window.DSHChart.countryPicker('domPick', domPicked, () => { renderDomains(); }, {
       items: MAIN.map((iso) => ({ key: iso, label: BY[iso].cn })),
-      picked: domPicked,
-      onChange: () => { renderDomains(); },
-      hint: `默认 ${(DATA.default_pick || []).length} 国；10 国全开时线条会互相遮挡`,
+      defaultCount: (DATA.default_pick || []).length,
     });
     DOMS.forEach((d) => { renderOneDomain(d.id); });
   }
@@ -3037,13 +3113,9 @@ const DATA = {"entities":[{"iso":"CHN","cn":"中国","en":"China","main":true,"c
    ============================================================ */
   function renderLong() {
     // 与「各领域评分轨迹」**各自独立**：两节数据无关，选择也各调各的。
-    window.DSHChart.picker({
-      host: 'longPick',
-      label: '显示国家：',
+    window.DSHChart.countryPicker('longPick', longPicked, () => { renderLong(); }, {
       items: MAIN.map((iso) => ({ key: iso, label: BY[iso].cn })),
-      picked: longPicked,
-      onChange: () => { renderLong(); },
-      hint: `默认 ${(DATA.default_pick || []).length} 国；10 国全开时线条会互相遮挡`,
+      defaultCount: (DATA.default_pick || []).length,
     });
     const host = el('longGrid'); if (!host) return;
     host.innerHTML = '';
@@ -3566,6 +3638,8 @@ const DATA = {"entities":[{"iso":"CHN","cn":"中国","en":"China","main":true,"c
     window.DSHChart.setMarkEvents(((DATA.events || {}).econ_marks) || []);
     // 横轴不越过数据年（2024）：数据年之后的派生值多是外推出来的（作者定）
     window.DSHChart.setRealEnd(DE);
+    // 两处吸顶选择器：静止时与卡片内那几处外观一致，吸住时才补底色（见 stickyPick）
+    ['domPick', 'longPick'].forEach((id) => window.DSHChart.stickyPick(id));
     renderOverall(); renderGDP();
     renderCrossStrait();
     renderBumpPicker(); renderBump(); renderBar(); renderCat();
